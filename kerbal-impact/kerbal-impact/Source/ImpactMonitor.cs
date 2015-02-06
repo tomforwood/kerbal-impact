@@ -7,31 +7,24 @@ using UnityEngine;
 
 namespace kerbal_impact
 {
-    [KSPAddon(KSPAddon.Startup.PSystemSpawn, true)]
-    public class ImpactMonitor : MonoBehaviour
+    
+    public class ImpactMonitor 
     {
 
         private static ImpactMonitor instance;
 
         
-        public ImpactMonitor()
+        private ImpactMonitor()
         {
-            Log("ImpactMonitorConstructor");
-            if (instance == null)
-            {
-                Log("Settings instance in constructor");
-                instance = this;
-            }
         }
 
         public static ImpactMonitor getInstance()
         {
             if (instance == null)
             {
-                new ImpactMonitor();
+                instance = new ImpactMonitor();
                 Log("Starting from getInsance");
             }
-            Log(" get instance instance id " + instance.GetInstanceID());
             return instance;
         }
         
@@ -41,18 +34,37 @@ namespace kerbal_impact
             Debug.Log("[" + Time.time.ToString("0.00") + "]: " + message);
         }
 
-        void Start()
+        public void Start()
         {
-            if (this != instance) return;//only start one instance
             Log("Its starting");
             //GameEvents.onPartDie.Add(OnPartDie);
             GameEvents.onCrash.Add(OnCrash);
+            GameEvents.onCollision.Add(OnCollide);
             GameEvents.OnVesselRecoveryRequested.Add(OnVesselRecovered);
+            //listBiones(Planetarium.fetch.Sun);
         }
 
-        void Stop()
+        private void listBiones(CelestialBody body)
+        {
+            //todo temporary
+            Log("attname=" + body.bodyName);
+            CBAttributeMapSO m = body.BiomeMap;
+            CBAttributeMapSO.MapAttribute[] atts = m.Attributes;
+            foreach (CBAttributeMapSO.MapAttribute att in atts)
+            {
+                Log("att=" + att.name + "-" + att.value);
+            }
+            foreach (CelestialBody sub in body.orbitingBodies)
+            {
+                listBiones(sub);
+            }
+        }
+
+        public void Stop()
         {
             GameEvents.onCrash.Remove(OnCrash);
+            GameEvents.onCollision.Remove(OnCollide);
+            GameEvents.OnVesselRecoveryRequested.Remove(OnVesselRecovered);
         }
 
         private void OnVesselRecovered(Vessel vessel) 
@@ -70,14 +82,26 @@ namespace kerbal_impact
             ImpactCoordinator.getInstance().scienceListeners.Fire(data);
         }
 
-        
-
         private void OnCrash(EventReport report)
         {
             Part crashPart = report.origin;
-
-            Log("crash data "+report.other+"- " + report.sender +"-"+ crashPart.vessel+"-" + crashPart.vessel.srf_velocity.magnitude);
+            if (crashPart.vessel.srf_velocity.magnitude<50) return;
+            Log("crash data " + report.msg + "-" + report.eventType + "-" + report.other + "- " + report.sender + "-" + crashPart.vessel + "-" + crashPart.vessel.srf_velocity.magnitude);
             Vessel crashVessel= crashPart.vessel;
+            doImpact(crashVessel);
+        }
+
+        private void OnCollide(EventReport report)
+        {
+            Part crashPart = report.origin;
+            if (crashPart.vessel.srf_velocity.magnitude <50) return;
+            if (report.other != "the surface") return;
+            Log("collide data " +report.msg+ "-" +report.eventType+"-"+ report.other + "- " + report.sender + "-" + crashPart.vessel + "-" + crashPart.vessel.srf_velocity.magnitude);
+            Vessel crashVessel = crashPart.vessel;
+            doImpact(crashVessel);
+        }
+
+        private void doImpact(Vessel crashVessel) {
             CelestialBody crashBody = crashVessel.orbit.referenceBody;
             if (crashBody.atmosphere) return;
             Log("Crashed on "+crashBody.theName);
@@ -86,6 +110,10 @@ namespace kerbal_impact
                 Log("Found a vessel around");
                 if (vessel.situation==Vessel.Situations.LANDED) {
                     landedVessel(crashBody, vessel, crashVessel);
+                }
+                if (vessel.situation == Vessel.Situations.ORBITING)
+                {
+                    orbitingVessel(crashBody, vessel, crashVessel);
                 }
             }
         }
@@ -99,8 +127,7 @@ namespace kerbal_impact
                 if (seismographs.Count != 0)
                 {
                     Log("Found seismographs");
-                    Log("in crashstuff instanceid= " + instance.GetInstanceID());
-                    ImpactScienceData data = createSeismologyData(crashBody, crashVessel);
+                    ImpactScienceData data = createSeismicData(crashBody, crashVessel);
                     ImpactCoordinator.getInstance().bangListeners.Fire(data);
                     seismographs[0].addExperiment(data);
 
@@ -113,32 +140,78 @@ namespace kerbal_impact
                 {
                     foreach (ProtoPartModuleSnapshot mod in snap.modules)
                     {
-                        //TODO only update 1 seismometer
                         if (mod.moduleName == "Seismometer")
                         {
                             Log("Found seismographs");
-                            Log("in crashstuff instanceid= " + instance.GetInstanceID());
-                            ImpactScienceData data = createSeismologyData(crashBody, crashVessel);
+                            ImpactScienceData data = createSeismicData(crashBody, crashVessel);
                             ImpactCoordinator.getInstance().bangListeners.Fire(data);
                             Seismometer.NewResult(mod.moduleValues, data);
+                            return;
                         }
                     }
                 }
             }
         }
 
-        private static ImpactScienceData createSeismologyData(CelestialBody crashBody, Vessel crashVessel)
+        private void orbitingVessel(CelestialBody crashBody, Vessel vessel, Vessel crashVessel)
+        {
+            Log("And it is orbiting");
+            Log("Crash vessel is at" + crashVessel.GetWorldPos3D());
+            Log("Orbiter is at" + vessel.GetWorldPos3D());
+            Vector3d crash = crashVessel.GetWorldPos3D();
+            Vector3d orbVec = vessel.GetWorldPos3D();
+            Vector3d sightVec = (orbVec-crash);
+            double angle = Vector3d.Angle(crash, sightVec);
+            Log("Sight=" + sightVec);
+            Log("sight angle = " + angle +" degrees");
+            Log("Distance between themn =" + (crash - orbVec).magnitude);
+
+            if (angle >90)
+            {
+                Log("Vessel is visible");
+                if (vessel.loaded)
+                {
+                    List<Spectrometer> seismographs = vessel.FindPartModulesImplementing<Spectrometer>();
+                    if (seismographs.Count != 0)
+                    {
+                        Log("Found spectrometers");
+                        ImpactScienceData data = createSpectralData(crashBody, crashVessel);
+                        ImpactCoordinator.getInstance().bangListeners.Fire(data);
+                        seismographs[0].addExperiment(data);
+
+                    }
+                }
+                else
+                {
+                    List<ProtoPartSnapshot> parts = vessel.protoVessel.protoPartSnapshots;
+                    foreach (ProtoPartSnapshot snap in parts)
+                    {
+                        foreach (ProtoPartModuleSnapshot mod in snap.modules)
+                        {
+                            if (mod.moduleName == "Spectrometer")
+                            {
+                                Log("Found spectrometers");
+                                ImpactScienceData data = createSpectralData(crashBody, crashVessel);
+                                ImpactCoordinator.getInstance().bangListeners.Fire(data);
+                                Seismometer.NewResult(mod.moduleValues, data);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static ImpactScienceData createSeismicData(CelestialBody crashBody, Vessel crashVessel)
         {
             double crashVelocity = crashVessel.srf_velocity.magnitude;
             Log("Velocity=" + crashVelocity);
             float crashMasss = crashVessel.GetTotalMass() * 1000;
-            Log("Mass=" + crashMasss);
             double crashEnergy = 0.5 * crashMasss * crashVelocity * crashVelocity; //KE of crash
-            Log("Energy=" + crashEnergy);
 
 
             ScienceExperiment experiment = ResearchAndDevelopment.GetExperiment("ImpactSeismometer");
-            ScienceSubject subject = ResearchAndDevelopment.GetExperimentSubject(experiment, ExperimentSituations.SrfLanded, crashBody, "surface");
+            ScienceSubject subject = ResearchAndDevelopment.GetExperimentSubject(experiment, ExperimentSituations.SrfLanded, crashBody, "");
             double science = translateKEToScience(crashEnergy, crashBody, subject);
 
             String flavourText = "Impact of";
@@ -147,6 +220,34 @@ namespace kerbal_impact
             science /= subject.subjectValue;
 
             ImpactScienceData data = new ImpactScienceData((float)crashEnergy, (float)(science * subject.dataScale), 1f, 0, subject.id, flavourText + energyFormat(crashEnergy));
+
+            return data;
+        }
+
+        private static ImpactScienceData createSpectralData(CelestialBody crashBody, Vessel crashVessel)
+        {
+            double crashVelocity = crashVessel.srf_velocity.magnitude;
+            Log("Velocity=" + crashVelocity);
+            float crashMasss = crashVessel.GetTotalMass() * 1000;
+            double crashEnergy = 0.5 * crashMasss * crashVelocity * crashVelocity; //KE of crash
+
+            ScienceExperiment experiment = ResearchAndDevelopment.GetExperiment("ImpactSpectrometer");
+            String biome = ScienceUtil.GetExperimentBiome(crashBody, crashVessel.latitude, crashVessel.longitude);
+            CBAttributeMapSO m = crashBody.BiomeMap;
+            CBAttributeMapSO.MapAttribute[] atts = m.Attributes;
+            foreach (CBAttributeMapSO.MapAttribute att in atts)
+            {
+                Log("att=" + att.name+"-"+att.value);
+            }
+            ScienceSubject subject = ResearchAndDevelopment.GetExperimentSubject(experiment, ExperimentSituations.InSpaceLow, crashBody, biome);
+            double science = subject.scienceCap;
+            Log("Impact took place in " + biome + " at " + crashVessel.latitude + "," + crashVessel.longitude);
+            String flavourText = "Impact of";
+
+            science = Math.Max(0, science - subject.science);
+            science /= subject.subjectValue;
+
+            ImpactScienceData data = new ImpactScienceData(biome, (float)(science * subject.dataScale), 1f, 0, subject.id, flavourText + energyFormat(crashEnergy));
 
             return data;
         }

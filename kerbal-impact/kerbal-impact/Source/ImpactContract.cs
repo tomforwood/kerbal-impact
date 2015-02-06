@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 using Contracts;
-//using Contracts.Parameters;
 using KSP;
 using KSPAchievements;
 
@@ -14,15 +13,16 @@ namespace kerbal_impact
     class ImpactContract : Contract
     {
         const String valuesNode = "ContractValues";
-        static Dictionary<CelestialBody, Dictionary<ContractPrestige, HashSet<String>>> biomeDifficulties;
-        static string[] instruments = { "ImpactSeismometer", "ImpactSpectrometer" };
+        
+        //static string[] instruments = { "ImpactSeismometer", "ImpactSpectrometer" };
         protected static Dictionary<ContractPrestige, int> starRatings = new Dictionary<ContractPrestige, int> 
         { {ContractPrestige.Trivial,1 },{ContractPrestige.Significant, 2},{ContractPrestige.Exceptional, 3}};
 
         protected PossibleContract pickedContract;
-
-        
         protected readonly System.Random random = new System.Random();
+
+        public int randId = new System.Random().Next();
+        
 
         protected override bool Generate()
         {
@@ -31,6 +31,7 @@ namespace kerbal_impact
 
         protected bool actuallyGenerate(){
             IEnumerable<CelestialBody> bodies = Contract.GetBodies_Reached(false, false);
+            
             bodies = bodies.Where(body => !body.atmosphere);
             //generate a weighted list of possible contracts (different bodsies and biomes where appropriate)
             List<PossibleContract> contracts = pickContracts(bodies);
@@ -46,9 +47,9 @@ namespace kerbal_impact
             //TODO all of these
             SetExpiry();
             SetScience(15, pickedContract.body);
-            SetDeadlineYears(2, pickedContract.body);
+            SetDeadlineYears(0.5f, pickedContract.body);
             SetReputation(3, -4, pickedContract.body);
-            SetFunds(5,6,-7,pickedContract.body);
+            SetFunds(20000,80000,10000,pickedContract.body);
 
             generateParameters();
             ImpactMonitor.Log("Generated parameters");
@@ -81,7 +82,6 @@ namespace kerbal_impact
         protected override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            ImpactMonitor.Log(node.ToString());
             pickedContract = new PossibleContract(node.GetNode(valuesNode));
         }
 
@@ -91,6 +91,13 @@ namespace kerbal_impact
             ConfigNode paramNode = new ConfigNode(valuesNode);
             pickedContract.save(paramNode);
             node.AddNode(paramNode);
+        }
+
+        protected override void OnCompleted()
+        {
+            ImpactMonitor.Log("Completed contract with id " + randId);
+            base.OnCompleted();
+
         }
 
         public class PossibleContract
@@ -107,11 +114,16 @@ namespace kerbal_impact
                 this.energy = energy;
             }
 
+            public PossibleContract(double prob, CelestialBody bod, string biome)
+            {
+                probability = prob;
+                body = bod;
+                this.biome = biome;
+            }
+
             public PossibleContract(ConfigNode node)
             {
-                ImpactMonitor.Log("Loading PC");
                 String bodyName = node.GetValue("BodyName");
-                ImpactMonitor.Log("body name ="+bodyName);
                 body = FlightGlobals.Bodies.Find( b => b.name == bodyName);
                 if (node.HasValue("Energy")) {
                     energy = Double.Parse(node.GetValue("Energy"));
@@ -163,11 +175,12 @@ namespace kerbal_impact
         protected override List<PossibleContract> pickContracts(IEnumerable<CelestialBody> bodies)
         {
             List<PossibleContract> possible = new List<PossibleContract>();
+            double probSum = 0;
             foreach (CelestialBody body in bodies)
             {
                 IEnumerable<SeismicContract> contracts = ContractSystem.Instance.GetCurrentContracts<SeismicContract>().Where(contract => contract.pickedContract.body == body);
                 if (contracts.Count() > 0) continue;//only 1 contract of a given type on a given body at once
-                //I guess you could have differnt biomes though //TODO
+                
                 ScienceExperiment experiment = ResearchAndDevelopment.GetExperiment("ImpactSeismometer");
                     
                 ScienceSubject subject;
@@ -175,7 +188,7 @@ namespace kerbal_impact
                 subject = ResearchAndDevelopment.GetExperimentSubject(experiment, sit, body, "surface");
                 int stars = starRatings[prestige];
                 double energy = pickKE(stars, subject, body);
-                possible.Add(new PossibleContract(1, body, energy));
+                possible.Add(new PossibleContract(++probSum, body, energy));
             }
             return possible;
         }
@@ -214,14 +227,62 @@ namespace kerbal_impact
 
         public override bool MeetRequirements()
         {
-            //TODO tie to part discovery
-            return true;
-            //return base.MeetRequirements();
+            AvailablePart ap = PartLoader.getPartInfoByName("Impact Seismometer");
+            if (ap != null)
+            {
+                if (ResearchAndDevelopment.PartTechAvailable(ap))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
-    /*class SpectrumContract : ImpactContract
+    class SpectrumContract : ImpactContract
     {
+        private static Dictionary<CelestialBody, Dictionary<String, int>> biomeDifficulties;
+        private static String configFile = KSPUtil.ApplicationRootPath + "GameData/Impact/biomedifficulty.cfg";
+
+        private const String titleBlurb = "Record an impact with a Spectrometer in {0} on {1}";
+        private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be usefull.\n Crash a probe into {0} on {1}" +
+            " and observe the results with a spectrometer in orbit";
+
+        protected override bool Generate()
+        {
+            if (biomeDifficulties == null)
+            {
+                loadDifficulties();
+            }
+            return actuallyGenerate();
+        }
+
+        private static void loadDifficulties()
+        {
+            ImpactMonitor.Log("Loading difficulties from "+configFile);
+            ConfigNode node = ConfigNode.Load(configFile);
+            
+            if (node.HasNode("BIOMES_LIST"))
+            {
+                biomeDifficulties = new Dictionary<CelestialBody, Dictionary<string, int>>();
+                foreach (ConfigNode bodyNode in node.GetNodes())
+                {
+                    String bodyName = bodyNode.GetValue("body");
+                    CelestialBody body = FlightGlobals.Bodies.Find( b => b.name == bodyName);
+                    Dictionary<string, int> difficulties = new Dictionary<string, int>();
+                    ConfigNode.ValueList values = bodyNode.values;
+                    foreach (ConfigNode.Value s in values)
+                    {
+                        if (s.name == "body") continue;
+                        ImpactMonitor.Log(s.name + "-" + s.value);
+                        difficulties.Add(s.name, int.Parse(s.value));
+
+                    }
+                    biomeDifficulties.Add(body, difficulties);
+
+                }
+            }
+        }
 
         protected override List<PossibleContract> pickContracts(IEnumerable<CelestialBody> bodies)
         {
@@ -229,37 +290,55 @@ namespace kerbal_impact
             double probSum = 0;
             foreach (CelestialBody body in bodies)
             {
-                IEnumerable<SeismicContract> contracts = ContractSystem.Instance.GetCurrentActiveContracts<SeismicContract>().Where(contract => contract.targetBody == body);
+                ImpactMonitor.Log("posible body=" + body.theName);
+                IEnumerable<SpectrumContract> contracts = ContractSystem.Instance.GetCurrentContracts<SpectrumContract>().Where(contract => contract.pickedContract.body == body);
                 if (contracts.Count() > 0) continue;//only 1 contract of a given type on a given body at once
-                //I guess you could have differnt biomes though //TODO
-                ScienceExperiment experiment = ResearchAndDevelopment.GetExperiment("ImpactSeismometer");
-
-                ScienceSubject subject;
-                ExperimentSituations sit = ExperimentSituations.SrfLanded;
-                subject = ResearchAndDevelopment.GetExperimentSubject(experiment, sit, body, "surface");
+                ImpactMonitor.Log("posible body="+body.theName);
+                if (!biomeDifficulties.ContainsKey(body)) continue;
+                Dictionary<string, int> biomes = biomeDifficulties[body];
                 int stars = starRatings[prestige];
-                string biome = pickKE(stars, subject, body);
-                possible.Add(new PossibleContract(1,  body, energy));
+                ImpactMonitor.Log("Looking for contracs with stars" + stars);
+                IEnumerable<KeyValuePair<String, int>> b = biomes.Where(bd=>(int)(bd.Value/3.4)==stars-1);
+                foreach (KeyValuePair<String, int> biomeVal in b) {
+                    string biome = biomeVal.Key;
+                    ImpactMonitor.Log("contract stars = " + stars + " possible biome =" + biome);
+                    possible.Add(new PossibleContract(probSum++,  body, biome));
+                }
             }
             return possible;
         }
 
-        private List<ContractPrestige> getAvailableStars(ScienceSubject subject)
-        {
-            int acheived = (int)Math.Max(subject.scientificValue / subject.scienceCap * 4, 3);
-            List<ContractPrestige> pres = new List<ContractPrestige>() { ContractPrestige.Trivial, ContractPrestige.Significant, ContractPrestige.Exceptional };
-            for (int i = 0; i < acheived; i++)
-            {
-                pres.RemoveAt(0);
-            }
-            return pres;
-        }
-
         protected override string GetTitle()
         {
-            return "Record an impact with a spectrometer in the " + pickedContract.biome + " of " + pickedContract.body.name;
+            return String.Format(titleBlurb, pickedContract.biome, pickedContract.body.theName);
         }
-    }*/
+
+        protected override string GetDescription()
+        {
+            return String.Format(descriptionBlurb, pickedContract.biome, pickedContract.body.theName);
+        }
+
+        protected override string GetSynopsys()
+        {
+            return GetTitle();
+        }
+
+        protected override string MessageCompleted()
+        {
+            return "Science data received";
+        }
+
+        public override bool MeetRequirements()
+        {
+            AvailablePart ap = PartLoader.getPartInfoByName("Impact Spectrometer");
+            if (ap != null)
+            {
+                if (ResearchAndDevelopment.PartTechAvailable(ap))
+                    return true;
+            }
+            return false;
+        }
+    }
 
     class ImpactParameter : ContractParameter
     {
@@ -267,6 +346,7 @@ namespace kerbal_impact
         private const string biomeTitle = "Crash into {0} on {1}";
 
         ImpactContract.PossibleContract contract;
+        private Boolean isComplete = false;
 
         public ImpactParameter()
         {
@@ -280,7 +360,6 @@ namespace kerbal_impact
         protected override void OnRegister()
         {
             base.OnRegister();
-            ImpactMonitor.Log("adding bang listener");
             ImpactCoordinator.getInstance().bangListeners.Add(OnBang);
         }
 
@@ -292,18 +371,34 @@ namespace kerbal_impact
 
         private void OnBang(ImpactScienceData data)
         {
-            ImpactMonitor.Log("bang received");
+            if (isComplete)
+            {
+                ImpactCoordinator.getInstance().bangListeners.Remove(OnBang);
+            }
+            ImpactMonitor.Log("bang received in contract param");
             ScienceSubject subject = ResearchAndDevelopment.GetSubjectByID(data.subjectID);
+            ImpactMonitor.Log("crash ke="+data.kineticEnergy + " contract KE = "+contract.energy);
+            ImpactMonitor.Log("subject isformbodybody = "+subject.IsFromBody(contract.body));
             if (data.kineticEnergy >= contract.energy && subject.IsFromBody(contract.body))
             {
                 //if a biome is specified  then check the biome matches
-                if (contract.biome != null && subject.IsFromSituation(ExperimentSituations.InSpaceLow) && data.biome == contract.biome)
+                ImpactMonitor.Log("Contract biome =" + contract.biome + " data biome =" + data.biome);
+                if (contract.biome != null)
                 {
-                    SetComplete();
+                    ImpactMonitor.Log("sit = "+subject.IsFromSituation(ExperimentSituations.InSpaceLow));
+                    if (subject.IsFromSituation(ExperimentSituations.InSpaceLow) && data.biome == contract.biome)
+                    {
+                        ImpactMonitor.Log("Setting complete");
+                        SetComplete();
+                        isComplete = true;
+                        ImpactCoordinator.getInstance().bangListeners.Remove(OnBang);
+                    }
                 }
                 else
                 {
                     SetComplete();
+                    isComplete = true;
+                    ImpactCoordinator.getInstance().bangListeners.Remove(OnBang);
                 }
             }
         }
@@ -333,11 +428,15 @@ namespace kerbal_impact
     {
         private const string keTitle = "Recover science data";
 
+        private Boolean isComplete = false;
+
         ImpactContract.PossibleContract contract;
+
+        long randId;
 
         public ScienceReceiptParameter()
         {
-
+            randId = (new System.Random()).Next();
         }
 
         public ScienceReceiptParameter(ImpactContract.PossibleContract contract)
@@ -349,30 +448,45 @@ namespace kerbal_impact
         protected override void OnRegister()
         {
             base.OnRegister();
-            ImpactMonitor.Log("adding science receipt listener");
             ImpactCoordinator.getInstance().scienceListeners.Add(OnScience);
         }
 
         protected override void OnUnregister()
         {
             base.OnUnregister();
-            ImpactCoordinator.getInstance().bangListeners.Remove(OnScience);
+            ImpactCoordinator.getInstance().scienceListeners.Remove(OnScience);
         }
 
         private void OnScience(ImpactScienceData data)
         {
-            ImpactMonitor.Log("science received");
+            if (isComplete)
+            {
+                ImpactCoordinator.getInstance().scienceListeners.Remove(OnScience);
+            }
+            ImpactMonitor.Log("science received in parameter "+randId);
             ScienceSubject subject = ResearchAndDevelopment.GetSubjectByID(data.subjectID);
+            ImpactMonitor.Log("crash ke=" + data.kineticEnergy + " contract KE = " + contract.energy);
+            ImpactMonitor.Log("subject isformbodybody = " + subject.IsFromBody(contract.body));
+            
             if (data.kineticEnergy >= contract.energy && subject.IsFromBody(contract.body))
             {
                 //if a biome is specified  then check the biome matches
-                if (contract.biome != null && subject.IsFromSituation(ExperimentSituations.InSpaceLow) && data.biome == contract.biome)
+                ImpactMonitor.Log("Contract biome =" + contract.biome + " data biome ="+data.biome);
+
+                if (contract.biome != null)
                 {
-                    SetComplete();
+                    if (subject.IsFromSituation(ExperimentSituations.InSpaceLow) && data.biome == contract.biome)
+                    {
+                        isComplete = true;
+                        SetComplete();
+                        ImpactCoordinator.getInstance().scienceListeners.Remove(OnScience);
+                    }
                 }
                 else
                 {
                     SetComplete();
+                    isComplete = true;
+                    ImpactCoordinator.getInstance().scienceListeners.Remove(OnScience);
                 }
             }
         }

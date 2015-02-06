@@ -26,24 +26,28 @@ namespace kerbal_impact
             OnSave(node, result);
         }
 
-        public static void OnSave(ConfigNode node, ScienceData data)
+        public static void OnSave(ConfigNode node, ImpactScienceData data)
         {
+            ImpactMonitor.Log("Saving seismometer");
+
             node.RemoveNodes("ScienceData"); //** Prevent duplicates            
             if (data != null)
             {
                 ConfigNode storedDataNode = node.AddNode("ScienceData");
-                data.Save(storedDataNode);
+                ImpactMonitor.Log("saving data");
+                data.SaveImpact(storedDataNode);
             }
         }
         
 
-        internal static void NewResult(ConfigNode node, ScienceData newData)
+        internal static void NewResult(ConfigNode node, ImpactScienceData newData)
         {
             //only replace if it is better than any existing results
             if (node.HasNode("ScienceData"))
             {
                 ConfigNode storedDataNode = node.GetNode("ScienceData");
-                ScienceData data = new ScienceData(storedDataNode);
+                ImpactMonitor.Log("loading data");
+                ImpactScienceData data = new ImpactScienceData(storedDataNode);
                 if (newData.dataAmount < data.dataAmount)
                 {
                     return;
