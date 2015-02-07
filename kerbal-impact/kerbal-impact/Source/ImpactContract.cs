@@ -42,7 +42,7 @@ namespace kerbal_impact
             int contractIndex = contracts.BinarySearch(new PossibleContract(picked, null, 0), comp);
             if (contractIndex < 0) contractIndex = ~contractIndex;
             pickedContract = contracts[contractIndex];
-            ImpactMonitor.Log("picked one");
+            ImpactMonitor.Log("picked one "+pickedContract);
 
             //TODO all of these
             SetExpiry();
@@ -106,6 +106,7 @@ namespace kerbal_impact
             public CelestialBody body;
             public double energy;
             public String biome;
+            public double latitude;
 
             public PossibleContract(double prob, CelestialBody bod, double energy)
             {
@@ -114,12 +115,19 @@ namespace kerbal_impact
                 this.energy = energy;
             }
 
-            public PossibleContract(double prob, CelestialBody bod, string biome)
+            public PossibleContract(double prob, CelestialBody bod, string biome, float latitude)
             {
                 probability = prob;
                 body = bod;
                 this.biome = biome;
+                this.latitude = latitude;
             }
+
+            public override String ToString()
+            {
+                return body.theName + "-" + ImpactMonitor.energyFormat(energy) + "-" + biome + "-" + latitude;
+            }
+
 
             public PossibleContract(ConfigNode node)
             {
@@ -130,6 +138,10 @@ namespace kerbal_impact
                 }
                 if (node.HasValue("Biome")) {
                     biome = node.GetValue("Biome");
+                }
+                if (node.HasValue("Latitude"))
+                {
+                    latitude = float.Parse(node.GetValue("Latitude"));
                 }
             }
 
@@ -143,6 +155,10 @@ namespace kerbal_impact
                 if (biome != null)
                 {
                     node.AddValue("Biome", biome);
+                }
+                if (latitude != 0)
+                {
+                    node.AddValue("Latitude", latitude);
                 }
             }
 
@@ -178,9 +194,13 @@ namespace kerbal_impact
             double probSum = 0;
             foreach (CelestialBody body in bodies)
             {
-                IEnumerable<SeismicContract> contracts = ContractSystem.Instance.GetCurrentContracts<SeismicContract>().Where(contract => contract.pickedContract.body == body);
+                IEnumerable<SeismicContract> contracts = ContractSystem.Instance.GetCurrentContracts<SeismicContract>()
+                    .Where(contract => contract.pickedContract.body == body);
                 if (contracts.Count() > 0) continue;//only 1 contract of a given type on a given body at once
-                
+                contracts = ContractSystem.Instance.GetCurrentContracts<SeismicContract>()
+                    .Where(contract => contract.prestige == prestige && contract.ContractState == State.Offered);
+                if (contracts.Count() > 0) continue;//only 1 contract a given prestige offered at a time
+
                 ScienceExperiment experiment = ResearchAndDevelopment.GetExperiment("ImpactSeismometer");
                     
                 ScienceSubject subject;
@@ -194,12 +214,9 @@ namespace kerbal_impact
         }
 
         private double pickKE(double stars, ScienceSubject subject, CelestialBody body) {
-            ImpactMonitor.Log("picking KE stars=" + stars);
             double scienceCap = subject.scienceCap;
-            ImpactMonitor.Log("Subjectcap = " + scienceCap);
             double minSci = (stars-1)/3*scienceCap;
             double maxSci = stars/3*scienceCap;
-            ImpactMonitor.Log("minSci=" + minSci + " maxSci="+maxSci);
             double goalScience = minSci + random.NextDouble() *  (maxSci - minSci);
             double ke = ImpactMonitor.translateScienceToKE(goalScience, body, subject);
             return ke;
@@ -243,10 +260,15 @@ namespace kerbal_impact
     {
         private static Dictionary<CelestialBody, Dictionary<String, int>> biomeDifficulties;
         private static String configFile = KSPUtil.ApplicationRootPath + "GameData/Impact/biomedifficulty.cfg";
+        private static bool useBiomes;
 
         private const String titleBlurb = "Record an impact with a Spectrometer in {0} on {1}";
         private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be usefull.\n Crash a probe into {0} on {1}" +
             " and observe the results with a spectrometer in orbit";
+
+        private const String titleLatBlurb = "Record an impact with a Spectrometer into {0} above {1}°(N/S)";
+        private const String descriptionLatBlurb = "We all like big bangs - and the scientists tell us they can be usefull.\n Crash a probe into {0} above" +
+            "{1}° Latitude North or South and observe the results with a spectrometer in orbit";
 
         protected override bool Generate()
         {
@@ -261,7 +283,12 @@ namespace kerbal_impact
         {
             ImpactMonitor.Log("Loading difficulties from "+configFile);
             ConfigNode node = ConfigNode.Load(configFile);
-            
+
+            if (node.HasValue("use_spectrum_biomes"))
+            {
+                useBiomes = bool.Parse(node.GetValue("use_spectrum_biomes"));
+            }
+
             if (node.HasNode("BIOMES_LIST"))
             {
                 biomeDifficulties = new Dictionary<CelestialBody, Dictionary<string, int>>();
@@ -274,7 +301,6 @@ namespace kerbal_impact
                     foreach (ConfigNode.Value s in values)
                     {
                         if (s.name == "body") continue;
-                        ImpactMonitor.Log(s.name + "-" + s.value);
                         difficulties.Add(s.name, int.Parse(s.value));
 
                     }
@@ -290,32 +316,71 @@ namespace kerbal_impact
             double probSum = 0;
             foreach (CelestialBody body in bodies)
             {
-                ImpactMonitor.Log("posible body=" + body.theName);
-                IEnumerable<SpectrumContract> contracts = ContractSystem.Instance.GetCurrentContracts<SpectrumContract>().Where(contract => contract.pickedContract.body == body);
+                //ImpactMonitor.Log("posible body=" + body.theName);
+                IEnumerable<SpectrumContract> contracts = ContractSystem.Instance.GetCurrentContracts<SpectrumContract>()
+                    .Where(contract => contract.pickedContract.body == body);
                 if (contracts.Count() > 0) continue;//only 1 contract of a given type on a given body at once
-                ImpactMonitor.Log("posible body="+body.theName);
+
+                contracts = ContractSystem.Instance.GetCurrentContracts<SpectrumContract>()
+                    .Where(contract => contract.prestige == prestige && contract.ContractState==State.Offered);
+                if (contracts.Count() > 0) continue;//only 1 contract a given prestige offered at a time
+
+
+                //ImpactMonitor.Log("posible body="+body.theName);
                 if (!biomeDifficulties.ContainsKey(body)) continue;
                 Dictionary<string, int> biomes = biomeDifficulties[body];
                 int stars = starRatings[prestige];
-                ImpactMonitor.Log("Looking for contracs with stars" + stars);
-                IEnumerable<KeyValuePair<String, int>> b = biomes.Where(bd=>(int)(bd.Value/3.4)==stars-1);
-                foreach (KeyValuePair<String, int> biomeVal in b) {
-                    string biome = biomeVal.Key;
-                    ImpactMonitor.Log("contract stars = " + stars + " possible biome =" + biome);
-                    possible.Add(new PossibleContract(probSum++,  body, biome));
+                //ImpactMonitor.Log("Looking for contracs with stars" + stars);
+                if (useBiomes)
+                {
+                    IEnumerable<KeyValuePair<String, int>> b = biomes.Where(bd => (int)(bd.Value / 3.4) == stars - 1);
+                    foreach (KeyValuePair<String, int> biomeVal in b)
+                    {
+                        string biome = biomeVal.Key;
+                        //ImpactMonitor.Log("contract stars = " + stars + " possible biome =" + biome);
+                        possible.Add(new PossibleContract(probSum++, body, biome, 0));
+                    }
                 }
+                else
+                {
+                    float lat=0;
+                    switch (prestige)
+                    {
+                        case ContractPrestige.Trivial:
+                            lat = 0;
+                            break;
+                        case ContractPrestige.Significant:
+                            lat = 66;
+                            break;
+                        case ContractPrestige.Exceptional:
+                            lat = 85;
+                            break;
+                    }
+                    possible.Add(new PossibleContract(probSum++, body, null, lat));
+                }
+
             }
             return possible;
         }
 
         protected override string GetTitle()
         {
-            return String.Format(titleBlurb, pickedContract.biome, pickedContract.body.theName);
+            if (useBiomes)
+            {
+                return String.Format(titleBlurb, pickedContract.biome, pickedContract.body.theName);
+            }
+            else
+            {
+                return String.Format(titleLatBlurb, pickedContract.body.theName, pickedContract.latitude);
+            }
         }
 
         protected override string GetDescription()
         {
-            return String.Format(descriptionBlurb, pickedContract.biome, pickedContract.body.theName);
+            if (useBiomes)
+                return String.Format(descriptionBlurb, pickedContract.biome, pickedContract.body.theName);
+            else
+                return String.Format(descriptionLatBlurb, pickedContract.body.theName, pickedContract.latitude);
         }
 
         protected override string GetSynopsys()
@@ -344,6 +409,7 @@ namespace kerbal_impact
     {
         private const string keTitle = "Crash into {0} with {1}";
         private const string biomeTitle = "Crash into {0} on {1}";
+        private const string latitudeTitle = "Crash into {0} above {1}° (N/S)";
 
         ImpactContract.PossibleContract contract;
         private Boolean isComplete = false;
@@ -394,7 +460,7 @@ namespace kerbal_impact
                         ImpactCoordinator.getInstance().bangListeners.Remove(OnBang);
                     }
                 }
-                else
+                else if (contract.latitude<=Math.Abs(data.latitude))
                 {
                     SetComplete();
                     isComplete = true;
@@ -417,8 +483,16 @@ namespace kerbal_impact
 
         protected override string GetTitle()
         {
-            if (contract.biome == null)
-                return String.Format(keTitle, contract.body.theName, ImpactMonitor.energyFormat(contract.energy));
+            if (contract.biome == null) {
+                if (contract.energy > 0)
+                {
+                    return String.Format(keTitle, contract.body.theName, ImpactMonitor.energyFormat(contract.energy));
+                }
+                else
+                {
+                    return String.Format(latitudeTitle, contract.body.theName, contract.latitude);
+                }
+            } 
             else
                 return String.Format(biomeTitle, contract.biome, contract.body.theName);
         }
@@ -482,7 +556,7 @@ namespace kerbal_impact
                         ImpactCoordinator.getInstance().scienceListeners.Remove(OnScience);
                     }
                 }
-                else
+                else if (contract.latitude <= Math.Abs(data.latitude))
                 {
                     SetComplete();
                     isComplete = true;

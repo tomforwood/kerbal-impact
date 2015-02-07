@@ -37,7 +37,6 @@ namespace kerbal_impact
         public void Start()
         {
             Log("Its starting");
-            //GameEvents.onPartDie.Add(OnPartDie);
             GameEvents.onCrash.Add(OnCrash);
             GameEvents.onCollision.Add(OnCollide);
             GameEvents.OnVesselRecoveryRequested.Add(OnVesselRecovered);
@@ -219,7 +218,8 @@ namespace kerbal_impact
             science = Math.Max(0, science - subject.science);
             science /= subject.subjectValue;
 
-            ImpactScienceData data = new ImpactScienceData((float)crashEnergy, (float)(science * subject.dataScale), 1f, 0, subject.id, flavourText + energyFormat(crashEnergy));
+            ImpactScienceData data = new ImpactScienceData((float)crashEnergy, null, crashVessel.latitude, 
+                (float)(science * subject.dataScale), 1f, 0, subject.id, flavourText + energyFormat(crashEnergy));
 
             return data;
         }
@@ -247,7 +247,8 @@ namespace kerbal_impact
             science = Math.Max(0, science - subject.science);
             science /= subject.subjectValue;
 
-            ImpactScienceData data = new ImpactScienceData(biome, (float)(science * subject.dataScale), 1f, 0, subject.id, flavourText + energyFormat(crashEnergy));
+            ImpactScienceData data = new ImpactScienceData(0, biome, crashVessel.latitude,
+                (float)(science * subject.dataScale), 1f, 0, subject.id, flavourText + energyFormat(crashEnergy));
 
             return data;
         }

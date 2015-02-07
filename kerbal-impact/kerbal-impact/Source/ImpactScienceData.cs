@@ -10,24 +10,23 @@ namespace kerbal_impact
 
         private const string energyName = "KineticEnergy";
         private const string biomeName = "Biome";
+        private const string latName = "Latitude";
 
         public float kineticEnergy { get; private set;}
         public string biome { get; private set; }
+        public double latitude { get; private set; }
 
         public ImpactScienceData(ConfigNode node) : base(node)
         {
             LoadImpact(node);
         }
 
-        public ImpactScienceData(float energy, float amount, float xmitValue, float labBoost, String id, String dataname)
+        public ImpactScienceData(float energy, String biome, double latitude, float amount, float xmitValue, float labBoost, String id, String dataname)
             : base(amount, xmitValue, labBoost, id, dataname)
         {
             kineticEnergy = energy;
-        }
-        public ImpactScienceData(String biome, float amount, float xmitValue, float labBoost, String id, String dataname)
-            : base(amount, xmitValue, labBoost, id, dataname)
-        {
             this.biome = biome;
+            this.latitude = latitude;
         }
 
         public void LoadImpact(ConfigNode node)
@@ -43,6 +42,10 @@ namespace kerbal_impact
                 biome = node.GetValue(biomeName);
                 ImpactMonitor.Log("loaded biome=" + biome);
             }
+            if (node.HasValue(latName))
+            {
+                latitude = float.Parse(node.GetValue(latName));
+            }
         }
 
         public void SaveImpact(ConfigNode node)
@@ -55,6 +58,7 @@ namespace kerbal_impact
             {
                 node.AddValue(biomeName, biome);
             }
+            node.AddValue(latName, latitude);
         }
     }
 }
