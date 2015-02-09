@@ -31,7 +31,7 @@ namespace kerbal_impact
         
         public static void Log(string message)
         {
-            Debug.Log("[" + Time.time.ToString("0.00") + "]: " + message);
+            Debug.Log("[IM:" + Time.time.ToString("0.00") + "]: " + message);
         }
 
         public void Start()
@@ -155,28 +155,31 @@ namespace kerbal_impact
         private void orbitingVessel(CelestialBody crashBody, Vessel vessel, Vessel crashVessel)
         {
             Log("And it is orbiting");
-            Log("Crash vessel is at" + crashVessel.GetWorldPos3D());
-            Log("Orbiter is at" + vessel.GetWorldPos3D());
-            Vector3d crash = crashVessel.GetWorldPos3D();
-            Vector3d orbVec = vessel.GetWorldPos3D();
+            Log("CelestialBody is at " + crashBody.position);
+            Log("Crash vessel is at" + crashVessel.CoM);
+            Log("Orbiter is at" + vessel.CoM);
+            Vector3d crash = crashVessel.CoM;
+            crash = crashVessel.CoM - crashBody.position;
+            Log("crashRelaticeTocentre =" + crash);
+            Vector3d orbVec = vessel.CoM - crashBody.position;
             Vector3d sightVec = (orbVec-crash);
             double angle = Vector3d.Angle(crash, sightVec);
             Log("Sight=" + sightVec);
             Log("sight angle = " + angle +" degrees");
             Log("Distance between themn =" + (crash - orbVec).magnitude);
 
-            if (angle >90)
+            if (angle < 90)
             {
                 Log("Vessel is visible");
                 if (vessel.loaded)
                 {
-                    List<Spectrometer> seismographs = vessel.FindPartModulesImplementing<Spectrometer>();
-                    if (seismographs.Count != 0)
+                    List<Spectrometer> spectrometers = vessel.FindPartModulesImplementing<Spectrometer>();
+                    if (spectrometers.Count != 0)
                     {
                         Log("Found spectrometers");
                         ImpactScienceData data = createSpectralData(crashBody, crashVessel);
                         ImpactCoordinator.getInstance().bangListeners.Fire(data);
-                        seismographs[0].addExperiment(data);
+                        spectrometers[0].addExperiment(data);
 
                     }
                 }
@@ -215,7 +218,7 @@ namespace kerbal_impact
 
             String flavourText = "Impact of";
 
-            science = Math.Max(0, science - subject.science);
+            science = Math.Max(0.01, science - subject.science);
             science /= subject.subjectValue;
 
             ImpactScienceData data = new ImpactScienceData((float)crashEnergy, null, crashVessel.latitude, 
@@ -299,7 +302,6 @@ namespace kerbal_impact
             else if (energyFigs >= 10) sigFigFormat = "00.0";
             else sigFigFormat = "0.00";
             string result = String.Format("{0:"+sigFigFormat+"}{1}", energyFigs, suffixes[suffixIndex]);
-            Log(result);
             return result;
         }
 

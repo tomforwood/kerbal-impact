@@ -36,11 +36,9 @@ namespace kerbal_impact
             {
                 kineticEnergy = float.Parse(node.GetValue(energyName));
             }
-            ImpactMonitor.Log("About to try loading biome=" + biome);
             if (node.HasValue(biomeName))
             {
                 biome = node.GetValue(biomeName);
-                ImpactMonitor.Log("loaded biome=" + biome);
             }
             if (node.HasValue(latName))
             {
@@ -51,9 +49,7 @@ namespace kerbal_impact
         public void SaveImpact(ConfigNode node)
         {
             base.Save(node);
-            ImpactMonitor.Log("SAving KE in scienceData");
             node.AddValue(energyName, kineticEnergy);
-            ImpactMonitor.Log("About to try savign biome=" + biome);
             if (biome != null)
             {
                 node.AddValue(biomeName, biome);
