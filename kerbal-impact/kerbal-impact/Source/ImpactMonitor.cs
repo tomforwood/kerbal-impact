@@ -216,13 +216,14 @@ namespace kerbal_impact
             ScienceSubject subject = ResearchAndDevelopment.GetExperimentSubject(experiment, ExperimentSituations.SrfLanded, crashBody, "");
             double science = translateKEToScience(crashEnergy, crashBody, subject);
 
-            String flavourText = "Impact of";
+            String flavourText = "Impact of {0} on {1}";
 
             science = Math.Max(0.01, science - subject.science);
             science /= subject.subjectValue;
 
-            ImpactScienceData data = new ImpactScienceData((float)crashEnergy, null, crashVessel.latitude, 
-                (float)(science * subject.dataScale), 1f, 0, subject.id, flavourText + energyFormat(crashEnergy));
+            ImpactScienceData data = new ImpactScienceData((float)crashEnergy, null, crashVessel.latitude,
+                (float)(science * subject.dataScale), 1f, 0, subject.id, 
+                String.Format(flavourText, energyFormat(crashEnergy), crashBody.theName));
 
             return data;
         }
@@ -245,13 +246,14 @@ namespace kerbal_impact
             ScienceSubject subject = ResearchAndDevelopment.GetExperimentSubject(experiment, ExperimentSituations.InSpaceLow, crashBody, biome);
             double science = subject.scienceCap;
             Log("Impact took place in " + biome + " at " + crashVessel.latitude + "," + crashVessel.longitude);
-            String flavourText = "Impact of";
+            String flavourText = "Impact at {0} on {1}";
 
             science = Math.Max(0, science - subject.science);
             science /= subject.subjectValue;
 
             ImpactScienceData data = new ImpactScienceData(0, biome, crashVessel.latitude,
-                (float)(science * subject.dataScale), 1f, 0, subject.id, flavourText + energyFormat(crashEnergy));
+                (float)(science * subject.dataScale), 1f, 0, subject.id, 
+                String.Format(flavourText, biome, crashBody.theName));
 
             return data;
         }

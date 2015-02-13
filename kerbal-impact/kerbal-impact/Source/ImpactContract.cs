@@ -350,10 +350,10 @@ namespace kerbal_impact
                             lat = 0;
                             break;
                         case ContractPrestige.Significant:
-                            lat = 66;
+                            lat = 50;
                             break;
                         case ContractPrestige.Exceptional:
-                            lat = 85;
+                            lat = 75;
                             break;
                     }
                     possible.Add(new PossibleContract(probSum++, body, null, lat));
