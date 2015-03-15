@@ -217,13 +217,21 @@ namespace kerbal_impact
             double science = translateKEToScience(crashEnergy, crashBody, subject);
 
             String flavourText = "Impact of {0} on {1}";
-
+            Log(" caluculated science =" + science);
             science = Math.Max(0.01, science - subject.science);
+            Log("residual science =" + science);
+            
             science /= subject.subjectValue;
+            Log("divided science =" + science);
 
             ImpactScienceData data = new ImpactScienceData((float)crashEnergy, null, crashVessel.latitude,
                 (float)(science * subject.dataScale), 1f, 0, subject.id, 
                 String.Format(flavourText, energyFormat(crashEnergy), crashBody.theName));
+
+            ScreenMessages.PostScreenMessage(
+                String.Format("Recoreded seismic impact of {0} on {1}",energyFormat(crashEnergy), crashBody.theName),
+                5.0f, ScreenMessageStyle.UPPER_RIGHT);
+
 
             return data;
         }
@@ -254,6 +262,10 @@ namespace kerbal_impact
             ImpactScienceData data = new ImpactScienceData(0, biome, crashVessel.latitude,
                 (float)(science * subject.dataScale), 1f, 0, subject.id, 
                 String.Format(flavourText, biome, crashBody.theName));
+
+            ScreenMessages.PostScreenMessage(
+                String.Format("Recoreded spectrographic impact data at {0} on {1}", biome, crashBody.theName),
+                5.0f, ScreenMessageStyle.UPPER_RIGHT);
 
             return data;
         }
