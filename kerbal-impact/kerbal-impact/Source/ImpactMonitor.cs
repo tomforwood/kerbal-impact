@@ -194,8 +194,10 @@ namespace kerbal_impact
                             {
                                 Log("Found spectrometers");
                                 ImpactScienceData data = createSpectralData(crashBody, crashVessel);
+                                Log("about to call listeners");
                                 ImpactCoordinator.getInstance().bangListeners.Fire(data);
-                                Seismometer.NewResult(mod.moduleValues, data);
+                                Log("About to call newresult");
+                                Spectrometer.NewResult(mod.moduleValues, data);
                                 return;
                             }
                         }

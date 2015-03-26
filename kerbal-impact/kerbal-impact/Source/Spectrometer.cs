@@ -8,6 +8,7 @@ namespace kerbal_impact
     class Spectrometer :PartModule, IScienceDataContainer
     {
         protected ImpactScienceData result;
+        //TODO I think this should be a list
 
         protected ExperimentsResultDialog expDialog = null;
 
@@ -28,7 +29,7 @@ namespace kerbal_impact
 
         public static void OnSave(ConfigNode node, ImpactScienceData data)
         {
-            ImpactMonitor.Log("Saving seismometer");
+            ImpactMonitor.Log("Saving spectrometerr");
 
             node.RemoveNodes("ScienceData"); //** Prevent duplicates            
             if (data != null)
@@ -48,8 +49,10 @@ namespace kerbal_impact
                 ConfigNode storedDataNode = node.GetNode("ScienceData");
                 ImpactMonitor.Log("loading data");
                 ImpactScienceData data = new ImpactScienceData(storedDataNode);
-                if (newData.dataAmount < data.dataAmount)
+                if (newData.dataAmount <= data.dataAmount)
                 {
+                    ImpactMonitor.Log("Discarding because better data is already stored");
+
                     return;
                 }
             }
