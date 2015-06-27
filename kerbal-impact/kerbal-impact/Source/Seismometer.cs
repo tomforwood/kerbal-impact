@@ -98,12 +98,18 @@ namespace kerbal_impact
 
         public ScienceData[] GetData()
         {
-            return new ImpactScienceData[]{result};
+            if (result != null)
+				return new ImpactScienceData[]{result};
+			else
+				return Enumerable.Empty<ImpactScienceData>();
         }
 
         public ImpactScienceData[] GetImpactData()
         {
-            return new ImpactScienceData[] { result };
+            if (result != null)
+				return new ImpactScienceData[]{result};
+			else
+				return Enumerable.Empty<ImpactScienceData>();
         }
 
         public void DumpData(ScienceData data)
