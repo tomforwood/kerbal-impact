@@ -43,7 +43,7 @@ namespace kerbal_impact
             //listBiones(Planetarium.fetch.Sun);
         }
 
-        private void listBiones(CelestialBody body)
+        private void listBiomes(CelestialBody body)
         {
             //todo temporary
             Log("attname=" + body.bodyName);
@@ -55,7 +55,7 @@ namespace kerbal_impact
             }
             foreach (CelestialBody sub in body.orbitingBodies)
             {
-                listBiones(sub);
+                listBiomes(sub);
             }
         }
 
@@ -87,32 +87,51 @@ namespace kerbal_impact
             if (crashPart.vessel.srf_velocity.magnitude<50) return;
             Log("crash data " + report.msg + "-" + report.eventType + "-" + report.other + "- " + report.sender + "-" + crashPart.vessel + "-" + crashPart.vessel.srf_velocity.magnitude);
             Vessel crashVessel= crashPart.vessel;
-            doImpact(crashVessel);
+            doImpact(crashVessel, null);
         }
 
         private void OnCollide(EventReport report)
         {
             Part crashPart = report.origin;
+            Log("Something crashed into something" + crashPart+ "->" + report.other);
             if (crashPart.vessel.srf_velocity.magnitude <50) return;
-            if (report.other != "the surface") return;
+            Vessel asteroid=null;
+            foreach (Vessel v in FlightGlobals.Vessels) {
+                Log(v.vesselName+v.vesselType + v.RevealName());
+                if (v.vesselName == report.other && v.vesselType == VesselType.SpaceObject)
+                {
+                    asteroid = v;
+                    break;
+                }
+            }
+            if (report.other != "the surface" && asteroid==null ) return;
             Log("collide data " +report.msg+ "-" +report.eventType+"-"+ report.other + "- " + report.sender + "-" + crashPart.vessel + "-" + crashPart.vessel.srf_velocity.magnitude);
             Vessel crashVessel = crashPart.vessel;
-            doImpact(crashVessel);
+            doImpact(crashVessel, asteroid);
         }
 
-        private void doImpact(Vessel crashVessel) {
+        private void doImpact(Vessel crashVessel, Vessel asteroid) {
             CelestialBody crashBody = crashVessel.orbit.referenceBody;
-            if (crashBody.atmosphere) return;
+            if (crashBody.atmosphere && asteroid==null) return;
             Log("Crashed on "+crashBody.theName);
             //find all craft orbiting and landed at this body
             foreach (Vessel vessel in FlightGlobals.Vessels.Where(v=>v.orbit.referenceBody==crashBody)) {
                 Log("Found a vessel around");
-                if (vessel.situation==Vessel.Situations.LANDED) {
-                    landedVessel(crashBody, vessel, crashVessel);
+                if (asteroid==null) {
+                    if (vessel.situation==Vessel.Situations.LANDED) {
+                        landedVessel(crashBody, vessel, crashVessel);
+                    }
+                    if (vessel.situation == Vessel.Situations.ORBITING)
+                    {
+                        orbitingVessel(crashBody, vessel, crashVessel);
+                    }
                 }
-                if (vessel.situation == Vessel.Situations.ORBITING)
+                else
                 {
-                    orbitingVessel(crashBody, vessel, crashVessel);
+                    if (vessel.situation == Vessel.Situations.ORBITING)
+                    {
+                        orbitingVessel(vessel, crashVessel, asteroid, crashBody);
+                    }
                 }
             }
         }
@@ -152,28 +171,73 @@ namespace kerbal_impact
             }
         }
 
-        private void orbitingVessel(CelestialBody crashBody, Vessel vessel, Vessel crashVessel)
+        private void orbitingVessel(Vessel observer, Vessel crashVessel, Vessel asteroid, CelestialBody crashBody)
+        {
+            Log("observer is orbiting ");
+            Log("observer is at " + observer.CoM);
+            Log("Crash vessel is at" + crashVessel.CoM);
+            Vector3d sightVec = observer.CoM - crashVessel.CoM;
+            Log("Distance between themn =" + (sightVec).magnitude);
+
+            if (sightVec.magnitude < 500000)
+            {
+                //observer is in range (500km)
+                if (observer.loaded)
+                {
+                    List<Spectrometer> spectrometers = observer.FindPartModulesImplementing<Spectrometer>();
+                    if (spectrometers.Count != 0)
+                    {
+                        Log("Found spectrometers");
+                        ImpactScienceData data = createAsteroidSpectralData(crashBody, asteroid, crashVessel);
+                        ImpactCoordinator.getInstance().bangListeners.Fire(data);
+                        spectrometers[0].addExperiment(data);
+
+                    }
+                }
+                else
+                {
+                    List<ProtoPartSnapshot> parts = observer.protoVessel.protoPartSnapshots;
+                    foreach (ProtoPartSnapshot snap in parts)
+                    {
+                        foreach (ProtoPartModuleSnapshot mod in snap.modules)
+                        {
+                            if (mod.moduleName == "Spectrometer")
+                            {
+                                Log("Found spectrometers");
+                                ImpactScienceData data = createAsteroidSpectralData(crashBody, asteroid, crashVessel);
+                                ImpactCoordinator.getInstance().bangListeners.Fire(data);
+                                Spectrometer.NewResult(mod.moduleValues, data);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
+
+        private void orbitingVessel(CelestialBody crashBody, Vessel observer, Vessel crashVessel)
         {
             Log("And it is orbiting");
             Log("CelestialBody is at " + crashBody.position);
             Log("Crash vessel is at" + crashVessel.CoM);
-            Log("Orbiter is at" + vessel.CoM);
+            Log("Observer is at" + observer.CoM);
             Vector3d crash = crashVessel.CoM;
             crash = crashVessel.CoM - crashBody.position;
             Log("crashRelaticeTocentre =" + crash);
-            Vector3d orbVec = vessel.CoM - crashBody.position;
+            Vector3d orbVec = observer.CoM - crashBody.position;
             Vector3d sightVec = (orbVec-crash);
             double angle = Vector3d.Angle(crash, sightVec);
             Log("Sight=" + sightVec);
             Log("sight angle = " + angle +" degrees");
-            Log("Distance between themn =" + (crash - orbVec).magnitude);
+            Log("Distance between themn =" + sightVec.magnitude);
 
             if (angle < 90)
             {
                 Log("Vessel is visible");
-                if (vessel.loaded)
+                if (observer.loaded)
                 {
-                    List<Spectrometer> spectrometers = vessel.FindPartModulesImplementing<Spectrometer>();
+                    List<Spectrometer> spectrometers = observer.FindPartModulesImplementing<Spectrometer>();
                     if (spectrometers.Count != 0)
                     {
                         Log("Found spectrometers");
@@ -185,7 +249,7 @@ namespace kerbal_impact
                 }
                 else
                 {
-                    List<ProtoPartSnapshot> parts = vessel.protoVessel.protoPartSnapshots;
+                    List<ProtoPartSnapshot> parts = observer.protoVessel.protoPartSnapshots;
                     foreach (ProtoPartSnapshot snap in parts)
                     {
                         foreach (ProtoPartModuleSnapshot mod in snap.modules)
@@ -226,7 +290,8 @@ namespace kerbal_impact
             science /= subject.subjectValue;
             Log("divided science =" + science);
 
-            ImpactScienceData data = new ImpactScienceData((float)crashEnergy, null, crashVessel.latitude,
+            ImpactScienceData data = new ImpactScienceData(ImpactScienceData.DataTypes.Seismic, 
+                (float)crashEnergy, null, crashVessel.latitude,
                 (float)(science * subject.dataScale), 1f, 0, subject.id, 
                 String.Format(flavourText, energyFormat(crashEnergy), crashBody.theName));
 
@@ -261,12 +326,42 @@ namespace kerbal_impact
             science = Math.Max(0, science - subject.science);
             science /= subject.subjectValue;
 
-            ImpactScienceData data = new ImpactScienceData(0, biome, crashVessel.latitude,
+            ImpactScienceData data = new ImpactScienceData(ImpactScienceData.DataTypes.Spectral,
+                0, biome, crashVessel.latitude,
                 (float)(science * subject.dataScale), 1f, 0, subject.id, 
                 String.Format(flavourText, biome, crashBody.theName));
 
             ScreenMessages.PostScreenMessage(
                 String.Format("Recoreded spectrographic impact data at {0} on {1}", biome, crashBody.theName),
+                5.0f, ScreenMessageStyle.UPPER_RIGHT);
+
+            return data;
+        }
+
+        private static ImpactScienceData createAsteroidSpectralData(CelestialBody crashBody, Vessel asteroid, Vessel crashVessel)
+        {
+            double crashVelocity = crashVessel.srf_velocity.magnitude;
+            Log("Velocity=" + crashVelocity);
+            float crashMasss = crashVessel.GetTotalMass() * 1000;
+            double crashEnergy = 0.5 * crashMasss * crashVelocity * crashVelocity; //KE of crash
+
+            ScienceExperiment experiment = ResearchAndDevelopment.GetExperiment("AsteroidSpectometry");
+            ExperimentSituations situation = ScienceUtil.GetExperimentSituation(asteroid);
+
+            ScienceSubject subject = ResearchAndDevelopment.GetExperimentSubject(experiment, situation, asteroid.id.ToString(), asteroid.GetName(), crashBody, "");
+            double science = subject.scienceCap;
+            Log("Impact took place in " + situation);
+            String flavourText = "Impact at {0} on {1}";
+
+  
+            science /= subject.subjectValue;
+
+            ImpactScienceData data = new ImpactScienceData(0, asteroid.GetName(), 
+                (float)(science * subject.dataScale), 1f, 0, subject.id,
+                String.Format(flavourText, asteroid.GetName(), crashBody.theName));
+
+            ScreenMessages.PostScreenMessage(
+                String.Format("Recoreded spectrographic impact data at {0} around {1}", asteroid.GetName(), crashBody.theName),
                 5.0f, ScreenMessageStyle.UPPER_RIGHT);
 
             return data;

@@ -98,7 +98,7 @@ namespace kerbal_impact
 
         public ScienceData[] GetData()
         {
-            return new ImpactScienceData[]{result};
+            return result != null ? new ImpactScienceData[] { result } : new ScienceData[0];
         }
 
         public ImpactScienceData[] GetImpactData()
