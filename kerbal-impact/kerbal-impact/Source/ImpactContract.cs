@@ -14,7 +14,6 @@ namespace kerbal_impact
     {
         const String valuesNode = "ContractValues";
         
-        //static string[] instruments = { "ImpactSeismometer", "ImpactSpectrometer" };
         protected static Dictionary<ContractPrestige, int> starRatings = new Dictionary<ContractPrestige, int> 
         { {ContractPrestige.Trivial,1 },{ContractPrestige.Significant, 2},{ContractPrestige.Exceptional, 3}};
 
@@ -41,12 +40,13 @@ namespace kerbal_impact
             IComparer<PossibleContract> comp = new PossibleContract.ProbComparer();
             int contractIndex = contracts.BinarySearch(new PossibleContract(picked, null, 0), comp);
             if (contractIndex < 0) contractIndex = ~contractIndex;
+            //ImpactMonitor.Log("pickedindex=" + contractIndex);
             pickedContract = contracts[contractIndex];
             ImpactMonitor.Log("picked one "+pickedContract);
 
             //TODO all of these
             SetExpiry();
-            SetScience(15, pickedContract.body);
+            SetScience(1.5f, pickedContract.body);
             SetDeadlineYears(0.5f, pickedContract.body);
             SetReputation(3, -4, pickedContract.body);
             SetFunds(20000,80000,10000,pickedContract.body);
@@ -107,12 +107,15 @@ namespace kerbal_impact
             public double energy;
             public String biome;
             public double latitude;
+            public string asteroid;
+            public ImpactScienceData.DataTypes expectedDataType;
 
             public PossibleContract(double prob, CelestialBody bod, double energy)
             {
                 probability = prob;
                 body = bod;
                 this.energy = energy;
+                expectedDataType = ImpactScienceData.DataTypes.Seismic;
             }
 
             public PossibleContract(double prob, CelestialBody bod, string biome, float latitude)
@@ -121,18 +124,31 @@ namespace kerbal_impact
                 body = bod;
                 this.biome = biome;
                 this.latitude = latitude;
+                expectedDataType = ImpactScienceData.DataTypes.Spectral;
+            }
+
+            public PossibleContract(double prob, string asteroid)
+            {
+                probability = prob;
+                this.asteroid = asteroid;
+                expectedDataType = ImpactScienceData.DataTypes.Asteroid;
             }
 
             public override String ToString()
             {
-                return body.theName + "-" + ImpactMonitor.energyFormat(energy) + "-" + biome + "-" + latitude;
+                if (body != null) { return body.theName + "-" + ImpactMonitor.energyFormat(energy) + "-" + biome + "-" + latitude; }
+                else return asteroid;
+                
             }
 
 
             public PossibleContract(ConfigNode node)
             {
-                String bodyName = node.GetValue("BodyName");
-                body = FlightGlobals.Bodies.Find( b => b.name == bodyName);
+                if (node.HasValue("BodyName"))
+                {
+                    String bodyName = node.GetValue("BodyName");
+                    body = FlightGlobals.Bodies.Find(b => b.name == bodyName);
+                }
                 if (node.HasValue("Energy")) {
                     energy = Double.Parse(node.GetValue("Energy"));
                 }
@@ -143,11 +159,32 @@ namespace kerbal_impact
                 {
                     latitude = float.Parse(node.GetValue("Latitude"));
                 }
+                if (node.HasValue("Asteroid"))
+                {
+                    asteroid = node.GetValue("Asteroid");
+                }
+                if (node.HasValue(ImpactScienceData.DataTypeName))
+                {
+                    expectedDataType = (ImpactScienceData.DataTypes)
+                        Enum.Parse(typeof(ImpactScienceData.DataTypes), 
+                        node.GetValue(ImpactScienceData.DataTypeName));
+                }
+                else
+                {
+                    //load up legacy contracts which didn't save datatype
+                    if (biome != null || latitude > 0) expectedDataType = ImpactScienceData.DataTypes.Spectral;
+                    else if (asteroid != null) expectedDataType = ImpactScienceData.DataTypes.Asteroid;
+                    else expectedDataType = ImpactScienceData.DataTypes.Seismic;
+                }
+                ImpactMonitor.Log("Loaded datatype is " + expectedDataType);
             }
 
             public void save(ConfigNode node)
             {
-                node.AddValue("BodyName", body.name);
+                if (body != null)
+                {
+                    node.AddValue("BodyName", body.name);
+                }
                 if (energy != 0)
                 {
                     node.AddValue("Energy", energy);
@@ -160,6 +197,11 @@ namespace kerbal_impact
                 {
                     node.AddValue("Latitude", latitude);
                 }
+                if (asteroid != null)
+                {
+                    node.AddValue("Asteroid", asteroid);
+                }
+                node.AddValue(ImpactScienceData.DataTypeName, expectedDataType);
             }
 
             public class ProbComparer : IComparer<PossibleContract>
@@ -172,7 +214,11 @@ namespace kerbal_impact
 
             internal string getHashString()
             {
-                return body.name + energy + biome;
+                if (body != null)
+                {
+                    return body.name + energy + biome;
+                }
+                else return asteroid;
             }
         }
     }
@@ -192,6 +238,7 @@ namespace kerbal_impact
         {
             List<PossibleContract> possible = new List<PossibleContract>();
             double probSum = 0;
+
             foreach (CelestialBody body in bodies)
             {
                 IEnumerable<SeismicContract> contracts = ContractSystem.Instance.GetCurrentContracts<SeismicContract>()
@@ -202,7 +249,7 @@ namespace kerbal_impact
                 if (contracts.Count() > 0) continue;//only 1 contract a given prestige offered at a time
 
                 ScienceExperiment experiment = ResearchAndDevelopment.GetExperiment("ImpactSeismometer");
-                    
+
                 ScienceSubject subject;
                 ExperimentSituations sit = ExperimentSituations.SrfLanded;
                 subject = ResearchAndDevelopment.GetExperimentSubject(experiment, sit, body, "surface");
@@ -405,11 +452,103 @@ namespace kerbal_impact
         }
     }
 
+    class AsteroidSpectrumContract : ImpactContract
+    {
+        private const String titleBlurb = "Record an impact with a Spectrometer with asteroid {0}";
+        private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be usefull.\n Crash a probe into asteroid {0}" +
+            " and observe the results with a spectrometer in orbit.\nThe spectometer must be within 500km of the impact";
+
+        protected override bool Generate()
+        {
+            return actuallyGenerate();
+        }
+
+    
+
+        protected override List<PossibleContract> pickContracts(IEnumerable<CelestialBody> bodies)
+        {
+            List<PossibleContract> possible = new List<PossibleContract>();
+            double probSum = 0;
+            IEnumerable<Vessel> asteroids= FlightGlobals.Vessels.Where(v => v.vesselType == VesselType.SpaceObject);
+            foreach (Vessel asteroid in asteroids)
+            {
+                IEnumerable<AsteroidSpectrumContract> contracts = ContractSystem.Instance.GetCurrentContracts<AsteroidSpectrumContract>()
+                    .Where(contract => contract.pickedContract.asteroid == asteroid.GetName());
+                if (contracts.Count() > 0) continue;//only 1 contract of a given type on a given asteroid at once
+
+                contracts = ContractSystem.Instance.GetCurrentContracts<AsteroidSpectrumContract>()
+                    .Where(contract => contract.prestige == prestige && contract.ContractState == State.Offered);
+                if (contracts.Count() > 0) continue;//only 1 contract a given prestige offered at a time
+                
+                //Does this asteroid match the correct presige?
+                int stars = getAsteroidStars(asteroid);
+                if (stars == starRatings[prestige])
+                {
+                    possible.Add(new PossibleContract(probSum++, asteroid.GetName()));
+                }
+
+            }
+            return possible;
+        }
+
+        private int getAsteroidStars(Vessel asteroid)
+        {
+            int stars = 2;
+            //get size class  - a=3, b,c=2, d,e=1
+
+            stars += orbitFactor(asteroid.orbit.referenceBody);
+
+            stars = Math.Max(1, Math.Min(3, stars));
+            return stars;
+
+
+        }
+
+        private int orbitFactor(CelestialBody celestialBody)
+        {
+            if (celestialBody.GetName() == "Kerbin") return -1;
+            if (celestialBody.GetName() == "Sun") return 0;
+            return orbitFactor(celestialBody.GetOrbit().referenceBody) + 1;
+        }
+
+        protected override string GetTitle()
+        {
+           return String.Format(titleBlurb, pickedContract.asteroid);
+        }
+
+        protected override string GetDescription()
+        {
+            return String.Format(descriptionBlurb, pickedContract.asteroid);
+        }
+
+        protected override string GetSynopsys()
+        {
+            return GetTitle();
+        }
+
+        protected override string MessageCompleted()
+        {
+            return "Science data received";
+        }
+
+        public override bool MeetRequirements()
+        {
+            AvailablePart ap = PartLoader.getPartInfoByName("Impact Spectrometer");
+            if (ap != null)
+            {
+                if (ResearchAndDevelopment.PartTechAvailable(ap))
+                    return true;
+            }
+            return false;
+        }
+    }
+
     class ImpactParameter : ContractParameter
     {
         private const string keTitle = "Crash into {0} with {1}";
         private const string biomeTitle = "Crash into {0} on {1}";
         private const string latitudeTitle = "Crash into {0} above {1}° (N/S)";
+        private const String asteroidTitle = "Crash into {0}";
 
         ImpactContract.PossibleContract contract;
         private Boolean isComplete = false;
@@ -441,31 +580,41 @@ namespace kerbal_impact
             {
                 ImpactCoordinator.getInstance().bangListeners.Remove(OnBang);
             }
-            ImpactMonitor.Log("bang received in contract param");
+            ImpactMonitor.Log("bang received in " + contract.expectedDataType + " parameter " + data.datatype);
+            if (data.datatype != contract.expectedDataType) return;
             ScienceSubject subject = ResearchAndDevelopment.GetSubjectByID(data.subjectID);
-            ImpactMonitor.Log("crash ke="+data.kineticEnergy + " contract KE = "+contract.energy);
-            ImpactMonitor.Log("subject isformbodybody = "+subject.IsFromBody(contract.body));
-            if (data.kineticEnergy >= contract.energy && subject.IsFromBody(contract.body))
+
+            bool passed = false;
+            switch (contract.expectedDataType)
             {
-                //if a biome is specified  then check the biome matches
-                ImpactMonitor.Log("Contract biome =" + contract.biome + " data biome =" + data.biome);
-                if (contract.biome != null)
-                {
-                    ImpactMonitor.Log("sit = "+subject.IsFromSituation(ExperimentSituations.InSpaceLow));
-                    if (subject.IsFromSituation(ExperimentSituations.InSpaceLow) && data.biome == contract.biome)
+                case ImpactScienceData.DataTypes.Seismic:
+                    //check this was the right body and the impact was high enough energy
+                    passed = (subject.IsFromBody(contract.body) && data.kineticEnergy >= contract.energy);
+                    break;
+                case ImpactScienceData.DataTypes.Spectral:
+                    //if a biome is specified  then check the biome matches
+                    ImpactMonitor.Log("Contract biome =" + contract.biome + " data biome =" + data.biome);
+                    ImpactMonitor.Log("Contract lat =" + contract.latitude + " data lat =" + data.latitude);
+                    if (contract.biome != null)
                     {
-                        ImpactMonitor.Log("Setting complete");
-                        SetComplete();
-                        isComplete = true;
-                        ImpactCoordinator.getInstance().bangListeners.Remove(OnBang);
+                        passed = data.biome == contract.biome;
                     }
-                }
-                else if (contract.latitude<=Math.Abs(data.latitude))
-                {
-                    SetComplete();
-                    isComplete = true;
-                    ImpactCoordinator.getInstance().bangListeners.Remove(OnBang);
-                }
+                    else
+                    {
+                        passed = contract.latitude <= Math.Abs(data.latitude);
+                    }
+                    break;
+                case ImpactScienceData.DataTypes.Asteroid:
+                    ImpactMonitor.Log("Contract astreroid =" + contract.asteroid + " data asteroid ="
+                    + data.asteroid + "data.datatype =" + data.datatype + " data asteroid =" + data.asteroid);
+                    passed= contract.asteroid==data.asteroid;
+                    break;
+            }
+
+            if (passed) {
+                SetComplete();
+                isComplete = true;
+                ImpactCoordinator.getInstance().bangListeners.Remove(OnBang);
             }
         }
 
@@ -483,6 +632,10 @@ namespace kerbal_impact
 
         protected override string GetTitle()
         {
+            if (contract.asteroid != null)
+            {
+                return String.Format(asteroidTitle, contract.asteroid);
+            }
             if (contract.biome == null) {
                 if (contract.energy > 0)
                 {
@@ -537,31 +690,38 @@ namespace kerbal_impact
             {
                 ImpactCoordinator.getInstance().scienceListeners.Remove(OnScience);
             }
-            ImpactMonitor.Log("science received in parameter "+randId);
+            ImpactMonitor.Log("science received in "+contract.expectedDataType+" parameter " + randId);
+            if (data.datatype != contract.expectedDataType) return;
             ScienceSubject subject = ResearchAndDevelopment.GetSubjectByID(data.subjectID);
-            ImpactMonitor.Log("crash ke=" + data.kineticEnergy + " contract KE = " + contract.energy);
-            ImpactMonitor.Log("subject isformbodybody = " + subject.IsFromBody(contract.body));
             
-            if (data.kineticEnergy >= contract.energy && subject.IsFromBody(contract.body))
-            {
-                //if a biome is specified  then check the biome matches
-                ImpactMonitor.Log("Contract biome =" + contract.biome + " data biome ="+data.biome);
 
-                if (contract.biome != null)
-                {
-                    if (subject.IsFromSituation(ExperimentSituations.InSpaceLow) && data.biome == contract.biome)
+            bool passed = false;
+            switch (contract.expectedDataType)
+            {
+                case ImpactScienceData.DataTypes.Seismic:
+                    //check this was the right body and the impact was high enough energy
+                    passed = (subject.IsFromBody(contract.body) && data.kineticEnergy >= contract.energy);
+                    break;
+                case ImpactScienceData.DataTypes.Spectral:
+                    //if a biome is specified  then check the biome matches
+                    ImpactMonitor.Log("Contract biome =" + contract.biome + " data biome =" + data.biome);
+                    if (contract.biome != null)
                     {
-                        isComplete = true;
-                        SetComplete();
-                        ImpactCoordinator.getInstance().scienceListeners.Remove(OnScience);
+                        passed = data.biome == contract.biome;
                     }
-                }
-                else if (contract.latitude <= Math.Abs(data.latitude))
-                {
-                    SetComplete();
-                    isComplete = true;
-                    ImpactCoordinator.getInstance().scienceListeners.Remove(OnScience);
-                }
+                    else passed = contract.latitude <= Math.Abs(data.latitude);
+                    break;
+                case ImpactScienceData.DataTypes.Asteroid:
+                    ImpactMonitor.Log("Contract astreroid =" + contract.asteroid + " data asteroid ="
+                    + data.asteroid + "data.datatype =" + data.datatype + " data asteroid =" + data.asteroid);
+                    passed= contract.asteroid==data.asteroid;
+                    break;
+            }
+            if (passed)
+            {
+                SetComplete();
+                isComplete = true;
+                ImpactCoordinator.getInstance().scienceListeners.Remove(OnScience);
             }
         }
 
