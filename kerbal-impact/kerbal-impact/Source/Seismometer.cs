@@ -101,7 +101,7 @@ namespace kerbal_impact
             if (result != null)
 				return new ImpactScienceData[]{result};
 			else
-				return Enumerable.Empty<ImpactScienceData>();
+				return new ImpactScienceData[] { };
         }
 
         public ImpactScienceData[] GetImpactData()
@@ -109,7 +109,7 @@ namespace kerbal_impact
             if (result != null)
 				return new ImpactScienceData[]{result};
 			else
-				return Enumerable.Empty<ImpactScienceData>();
+                return new ImpactScienceData[] { };
         }
 
         public void DumpData(ScienceData data)

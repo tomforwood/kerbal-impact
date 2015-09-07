@@ -31,7 +31,7 @@ namespace kerbal_impact
         
         public static void Log(string message)
         {
-            Debug.Log("[IM:" + Time.time.ToString("0.00") + "]: " + message);
+            Debug.Log("[IM:" + DateTime.Now + "]: " + message);
         }
 
         public void Start()
@@ -40,6 +40,7 @@ namespace kerbal_impact
             GameEvents.onCrash.Add(OnCrash);
             GameEvents.onCollision.Add(OnCollide);
             GameEvents.OnVesselRecoveryRequested.Add(OnVesselRecovered);
+            
             //listBiones(Planetarium.fetch.Sun);
         }
 
@@ -64,6 +65,7 @@ namespace kerbal_impact
             GameEvents.onCrash.Remove(OnCrash);
             GameEvents.onCollision.Remove(OnCollide);
             GameEvents.OnVesselRecoveryRequested.Remove(OnVesselRecovered);
+            
         }
 
         private void OnVesselRecovered(Vessel vessel) 
@@ -415,6 +417,8 @@ namespace kerbal_impact
             string result = String.Format("{0:"+sigFigFormat+"}{1}", energyFigs, suffixes[suffixIndex]);
             return result;
         }
+
+
 
         
     }
