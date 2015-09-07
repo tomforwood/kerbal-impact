@@ -48,7 +48,7 @@ namespace kerbal_impact
             SetExpiry();
             SetScience(1.5f, pickedContract.body);
             SetDeadlineYears(0.5f, pickedContract.body);
-            SetReputation(3, -4, pickedContract.body);
+            SetReputation(3, 4, pickedContract.body);
             SetFunds(20000,80000,10000,pickedContract.body);
 
             generateParameters();
@@ -460,10 +460,18 @@ namespace kerbal_impact
 
         protected override bool Generate()
         {
-            return actuallyGenerate();
+            GameEvents.onVesselDestroy.Add(OnVesselDestroy);
+            bool result = actuallyGenerate();
+            if (result)
+            {
+                //make the name of the targeted asteroid visible
+                IEnumerable<Vessel> asteroids =
+                FlightGlobals.Vessels.Where(v => v.GetName() == pickedContract.asteroid);
+                Vessel asteroid = asteroids.First();
+                asteroid.DiscoveryInfo.SetLevel(DiscoveryLevels.Name | DiscoveryLevels.Presence);
+            }
+            return result;
         }
-
-    
 
         protected override List<PossibleContract> pickContracts(IEnumerable<CelestialBody> bodies)
         {
@@ -472,6 +480,7 @@ namespace kerbal_impact
             IEnumerable<Vessel> asteroids= FlightGlobals.Vessels.Where(v => v.vesselType == VesselType.SpaceObject);
             foreach (Vessel asteroid in asteroids)
             {
+                ImpactMonitor.Log("asteroid name = " + asteroid.GetName() + " asteroid discovery=" + asteroid.DiscoveryInfo.Level);
                 IEnumerable<AsteroidSpectrumContract> contracts = ContractSystem.Instance.GetCurrentContracts<AsteroidSpectrumContract>()
                     .Where(contract => contract.pickedContract.asteroid == asteroid.GetName());
                 if (contracts.Count() > 0) continue;//only 1 contract of a given type on a given asteroid at once
@@ -541,6 +550,43 @@ namespace kerbal_impact
             }
             return false;
         }
+
+        private void OnVesselDestroy(Vessel vessel)
+        {
+            ImpactMonitor.Log("In astContract onVesselDestroy");
+            if (vessel.vesselType == VesselType.SpaceObject)
+            {
+                ImpactMonitor.Log("vessel of type asteroid has beenb destroyes - checking for active contracts");
+                ImpactMonitor.Log("PC="+pickedContract);
+                ImpactMonitor.Log("PC.ast=" + pickedContract.asteroid);
+                ImpactMonitor.Log("vesssle=" + vessel);
+                
+                if (pickedContract!=null && pickedContract.asteroid != null && pickedContract.asteroid == vessel.GetName())
+                {
+                    ImpactMonitor.Log("the asteroid is the one refered to by thius contract");
+                    this.Cancel();
+                }
+            }
+            ImpactMonitor.Log("exiting astContract onVesselDestroy");
+        }
+
+        protected override void OnFinished()
+        {
+            base.OnFinished();
+            GameEvents.onVesselDestroy.Remove(OnVesselDestroy);
+        }
+
+        protected override void OnAccepted()
+        {
+            base.OnAccepted();
+            IEnumerable<Vessel> asteroids = 
+                FlightGlobals.Vessels.Where(v => v.GetName() == pickedContract.asteroid);
+            Vessel asteroid = asteroids.First();
+            asteroid.DiscoveryInfo.SetLevel(DiscoveryLevels.StateVectors | DiscoveryLevels.Name | DiscoveryLevels.Presence);
+            
+        }
+
+
     }
 
     class ImpactParameter : ContractParameter
