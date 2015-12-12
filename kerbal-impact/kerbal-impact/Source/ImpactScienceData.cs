@@ -26,16 +26,16 @@ namespace kerbal_impact
             LoadImpact(node);
         }
 
-        public ImpactScienceData(DataTypes dataType, float energy, String biome, double latitude, float amount, float xmitValue, float labBoost, String id, String dataname)
-            : base(amount, xmitValue, labBoost, id, dataname)
+		public ImpactScienceData(DataTypes dataType, float energy, String biome, double latitude, float amount, float xmitValue, float labBoost, String id, String dataname, bool triggered, uint flightID)
+			: base(amount, xmitValue, labBoost, id, dataname, triggered, flightID)
         {
             this.datatype = dataType;
             kineticEnergy = energy;
             this.biome = biome;
             this.latitude = latitude;
         }
-        public ImpactScienceData(float energy, String asteroid, float amount, float xmitValue, float labBoost, String id, String dataname)
-            : base(amount, xmitValue, labBoost, id, dataname)
+		public ImpactScienceData(float energy, String asteroid, float amount, float xmitValue, float labBoost, String id, String dataname, bool triggered, uint flightID)
+			: base(amount, xmitValue, labBoost, id, dataname, triggered, flightID)
         {
             kineticEnergy = energy;
             this.asteroid = asteroid;
