@@ -64,8 +64,12 @@ namespace kerbal_impact
 
 		public void ReturnData(ScienceData data)
 		{
-			if (data != null && data.dataAmount > result.dataAmount) {
-				result = data as ImpactScienceData;
+			if (data != null) {
+				if (result == null) {
+					result = data as ImpactScienceData;
+				} else if(data.dataAmount > result.dataAmount) {
+					result = data as ImpactScienceData;
+				}
 			}
 
 			return;
