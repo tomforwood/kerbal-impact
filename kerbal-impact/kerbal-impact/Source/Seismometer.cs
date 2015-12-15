@@ -62,6 +62,19 @@ namespace kerbal_impact
 
         }
 
+		public void ReturnData(ScienceData data)
+		{
+			if (data != null) {
+				if (result == null) {
+					result = data as ImpactScienceData;
+				} else if(data.dataAmount > result.dataAmount) {
+					result = data as ImpactScienceData;
+				}
+			}
+
+			return;
+		}
+
         internal void addExperiment(ImpactScienceData newData)
         {
             //only replace if it is better than any existing results
