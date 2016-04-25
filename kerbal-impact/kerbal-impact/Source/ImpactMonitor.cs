@@ -99,7 +99,7 @@ namespace kerbal_impact
             if (crashPart.vessel.srf_velocity.magnitude <50) return;
             Vessel asteroid=null;
             foreach (Vessel v in FlightGlobals.Vessels) {
-                Log(v.vesselName+v.vesselType + v.RevealName());
+                Log(v.vesselName + " " +v.vesselType + " " + v.RevealName());
                 if (v.vesselName == report.other && v.vesselType == VesselType.SpaceObject)
                 {
                     asteroid = v;
@@ -118,7 +118,7 @@ namespace kerbal_impact
             Log("Crashed on "+crashBody.theName);
             //find all craft orbiting and landed at this body
             foreach (Vessel vessel in FlightGlobals.Vessels.Where(v=>v.orbit.referenceBody==crashBody)) {
-                Log("Found a vessel around");
+				Log("Found a vessel named " + vessel.RevealName() + " around "+ crashBody);
                 if (asteroid==null) {
                     if (vessel.situation==Vessel.Situations.LANDED) {
                         landedVessel(crashBody, vessel, crashVessel);

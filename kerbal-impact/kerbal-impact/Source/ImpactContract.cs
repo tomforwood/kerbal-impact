@@ -310,11 +310,11 @@ namespace kerbal_impact
         private static bool useBiomes;
 
         private const String titleBlurb = "Record an impact with a Spectrometer in {0} on {1}";
-        private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be usefull.\n Crash a probe into {0} on {1}" +
+        private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be useful.\n Crash a probe into {0} on {1}" +
             " and observe the results with a spectrometer in orbit";
 
         private const String titleLatBlurb = "Record an impact with a Spectrometer into {0} above {1}°(N/S)";
-        private const String descriptionLatBlurb = "We all like big bangs - and the scientists tell us they can be usefull.\n Crash a probe into {0} above" +
+        private const String descriptionLatBlurb = "We all like big bangs - and the scientists tell us they can be useful.\n Crash a probe into {0} above" +
             "{1}° Latitude North or South and observe the results with a spectrometer in orbit";
 
         protected override bool Generate()
