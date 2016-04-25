@@ -1,4 +1,5 @@
-﻿using System;
+﻿using KSP.UI.Screens.Flight.Dialogs;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -96,7 +97,9 @@ namespace kerbal_impact
 
         public void ReviewDataItem(ScienceData sd)
         {
-            expDialog = ExperimentsResultDialog.DisplayResult(new ExperimentResultDialogPage(part, sd, 1f, 0f, false, "", true, false, DumpData, KeepData, TransmitData, null));
+            ImpactMonitor.Log("Reviewing data from seismomenter");
+            ScienceLabSearch labSearch = new ScienceLabSearch(null,sd);
+            expDialog = ExperimentsResultDialog.DisplayResult(new ExperimentResultDialogPage(part, sd, 1f, 0f, false, "", true, labSearch, DumpData, KeepData, TransmitData, null));
         }
 
         public void ReviewData()
@@ -137,6 +140,7 @@ namespace kerbal_impact
         }
         public void TransmitData(ScienceData data)
         {
+            ImpactMonitor.Log("CAlling transmit data from seismomenter");
             expDialog = null;
             List<IScienceDataTransmitter> tranList = vessel.FindPartModulesImplementing<IScienceDataTransmitter>();
             if (tranList.Count > 0 && result!=null)

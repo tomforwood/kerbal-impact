@@ -556,18 +556,17 @@ namespace kerbal_impact
             ImpactMonitor.Log("In astContract onVesselDestroy");
             if (vessel.vesselType == VesselType.SpaceObject)
             {
-                ImpactMonitor.Log("vessel of type asteroid has beenb destroyes - checking for active contracts");
+                ImpactMonitor.Log("vessel of type asteroid has been destroyed - checking for active contracts");
                 ImpactMonitor.Log("PC="+pickedContract);
                 ImpactMonitor.Log("PC.ast=" + pickedContract.asteroid);
                 ImpactMonitor.Log("vesssle=" + vessel);
                 
                 if (pickedContract!=null && pickedContract.asteroid != null && pickedContract.asteroid == vessel.GetName())
                 {
-                    ImpactMonitor.Log("the asteroid is the one refered to by thius contract");
+                    ImpactMonitor.Log("the asteroid is the one refered to by this contract");
                     this.Cancel();
                 }
             }
-            ImpactMonitor.Log("exiting astContract onVesselDestroy");
         }
 
         protected override void OnFinished()
@@ -638,6 +637,11 @@ namespace kerbal_impact
                     passed = (subject.IsFromBody(contract.body) && data.kineticEnergy >= contract.energy);
                     break;
                 case ImpactScienceData.DataTypes.Spectral:
+                    //check it is the right body
+                    if (!subject.IsFromBody(contract.body))
+                    {
+                        break;
+                    }
                     //if a biome is specified  then check the biome matches
                     ImpactMonitor.Log("Contract biome =" + contract.biome + " data biome =" + data.biome);
                     ImpactMonitor.Log("Contract lat =" + contract.latitude + " data lat =" + data.latitude);
@@ -749,6 +753,11 @@ namespace kerbal_impact
                     passed = (subject.IsFromBody(contract.body) && data.kineticEnergy >= contract.energy);
                     break;
                 case ImpactScienceData.DataTypes.Spectral:
+                    //check it is the right body
+                    if (!subject.IsFromBody(contract.body))
+                    {
+                        break;
+                    }
                     //if a biome is specified  then check the biome matches
                     ImpactMonitor.Log("Contract biome =" + contract.biome + " data biome =" + data.biome);
                     if (contract.biome != null)
