@@ -36,7 +36,6 @@ namespace kerbal_impact
             if (data != null)
             {
                 ConfigNode storedDataNode = node.AddNode("ScienceData");
-                ImpactMonitor.Log("saving data");
                 data.SaveImpact(storedDataNode);
             }
         }
@@ -48,12 +47,10 @@ namespace kerbal_impact
             if (node.HasNode("ScienceData"))
             {
                 ConfigNode storedDataNode = node.GetNode("ScienceData");
-                ImpactMonitor.Log("loading data");
                 ImpactScienceData data = new ImpactScienceData(storedDataNode);
                 if (newData.dataAmount <= data.dataAmount)
                 {
                     ImpactMonitor.Log("Discarding because better data is already stored");
-
                     return;
                 }
             }

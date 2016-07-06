@@ -127,10 +127,11 @@ namespace kerbal_impact
                 expectedDataType = ImpactScienceData.DataTypes.Spectral;
             }
 
-            public PossibleContract(double prob, string asteroid)
+            public PossibleContract(double prob, string asteroid, CelestialBody orbiting)
             {
                 probability = prob;
                 this.asteroid = asteroid;
+                this.body = orbiting;
                 expectedDataType = ImpactScienceData.DataTypes.Asteroid;
             }
 
@@ -162,6 +163,12 @@ namespace kerbal_impact
                 if (node.HasValue("Asteroid"))
                 {
                     asteroid = node.GetValue("Asteroid");
+                    if (body==null)
+                    {
+                        //legacy contract without asteroid body specified
+                        Vessel ast = FlightGlobals.Vessels.Where(v => v.GetName() == asteroid).Single();
+                        body = ast.orbit.referenceBody;
+                    }
                 }
                 if (node.HasValue(ImpactScienceData.DataTypeName))
                 {
@@ -176,7 +183,6 @@ namespace kerbal_impact
                     else if (asteroid != null) expectedDataType = ImpactScienceData.DataTypes.Asteroid;
                     else expectedDataType = ImpactScienceData.DataTypes.Seismic;
                 }
-                ImpactMonitor.Log("Loaded datatype is " + expectedDataType);
             }
 
             public void save(ConfigNode node)
@@ -456,7 +462,7 @@ namespace kerbal_impact
     {
         private const String titleBlurb = "Record an impact with a Spectrometer with asteroid {0}";
         private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be usefull.\n Crash a probe into asteroid {0}" +
-            " and observe the results with a spectrometer in orbit.\nThe spectometer must be within 500km of the impact";
+            " orbiting {1} and observe the results with a spectrometer in orbit.\nThe spectometer must be within 500km of the impact";
 
         protected override bool Generate()
         {
@@ -477,6 +483,7 @@ namespace kerbal_impact
         {
             List<PossibleContract> possible = new List<PossibleContract>();
             double probSum = 0;
+            ImpactMonitor.Log("Finding asteroids");
             IEnumerable<Vessel> asteroids= FlightGlobals.Vessels.Where(v => v.vesselType == VesselType.SpaceObject);
             foreach (Vessel asteroid in asteroids)
             {
@@ -493,7 +500,7 @@ namespace kerbal_impact
                 int stars = getAsteroidStars(asteroid);
                 if (stars == starRatings[prestige])
                 {
-                    possible.Add(new PossibleContract(probSum++, asteroid.GetName()));
+                    possible.Add(new PossibleContract(probSum++, asteroid.GetName(), asteroid.orbit.referenceBody));
                 }
 
             }
@@ -527,7 +534,7 @@ namespace kerbal_impact
 
         protected override string GetDescription()
         {
-            return String.Format(descriptionBlurb, pickedContract.asteroid);
+            return String.Format(descriptionBlurb, pickedContract.asteroid, pickedContract.body.theName);
         }
 
         protected override string GetSynopsys()
