@@ -28,7 +28,9 @@ namespace kerbal_impact
             return false;
         }
 
-        protected bool actuallyGenerate(){
+        protected bool actuallyGenerate()
+        {
+            ImpactMonitor.Log("Trying to generate an impact contract");
             IEnumerable<CelestialBody> bodies = Contract.GetBodies_Reached(false, false);
             
             bodies = bodies.Where(body => !body.atmosphere);
@@ -466,10 +468,10 @@ namespace kerbal_impact
 
         protected override bool Generate()
         {
-            GameEvents.onVesselDestroy.Add(OnVesselDestroy);
             bool result = actuallyGenerate();
             if (result)
             {
+                GameEvents.onVesselDestroy.Add(OnVesselDestroy);
                 //make the name of the targeted asteroid visible
                 IEnumerable<Vessel> asteroids =
                 FlightGlobals.Vessels.Where(v => v.GetName() == pickedContract.asteroid);
@@ -561,7 +563,7 @@ namespace kerbal_impact
         private void OnVesselDestroy(Vessel vessel)
         {
             ImpactMonitor.Log("In astContract onVesselDestroy");
-            if (vessel.vesselType == VesselType.SpaceObject)
+            if (vessel.vesselType == VesselType.SpaceObject && pickedContract!=null)
             {
                 ImpactMonitor.Log("vessel of type asteroid has been destroyed - checking for active contracts");
                 ImpactMonitor.Log("PC="+pickedContract);

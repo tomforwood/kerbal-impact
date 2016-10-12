@@ -132,7 +132,7 @@ namespace kerbal_impact
                 {
                     if (vessel.situation == Vessel.Situations.ORBITING)
                     {
-                        orbitingVessel(vessel, crashVessel, asteroid, crashBody);
+                        nearAsteroidVessel(vessel, crashVessel, asteroid, crashBody);
                     }
                 }
             }
@@ -150,7 +150,6 @@ namespace kerbal_impact
 					ImpactScienceData data = createSeismicData(crashBody, crashVessel, seismographs[0].part.flightID);
                     ImpactCoordinator.getInstance().bangListeners.Fire(data);
                     seismographs[0].addExperiment(data);
-
                 }
             }
             else
@@ -173,17 +172,19 @@ namespace kerbal_impact
             }
         }
 
-        private void orbitingVessel(Vessel observer, Vessel crashVessel, Vessel asteroid, CelestialBody crashBody)
+        private void nearAsteroidVessel(Vessel observer, Vessel crashVessel, Vessel asteroid, CelestialBody crashBody)
         {
             Log("observer is orbiting ");
             Log("observer is at " + observer.CoM);
             Log("Crash vessel is at" + crashVessel.CoM);
             Vector3d sightVec = observer.CoM - crashVessel.CoM;
-            Log("Distance between themn =" + (sightVec).magnitude);
+            Log("Distance between them =" + sightVec.magnitude);
 
-            if (sightVec.magnitude < 500000)
+
+            if (sightVec.magnitude < 5e5)
             {
                 //observer is in range (500km)
+                Log("It is in range =" + (sightVec).magnitude);
                 if (observer.loaded)
                 {
                     List<Spectrometer> spectrometers = observer.FindPartModulesImplementing<Spectrometer>();
@@ -232,7 +233,7 @@ namespace kerbal_impact
             double angle = Vector3d.Angle(crash, sightVec);
             Log("Sight=" + sightVec);
             Log("sight angle = " + angle +" degrees");
-            Log("Distance between themn =" + sightVec.magnitude);
+            Log("Distance between them =" + sightVec.magnitude);
 
             if (angle < 90)
             {
