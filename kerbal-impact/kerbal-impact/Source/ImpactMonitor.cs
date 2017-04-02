@@ -118,7 +118,7 @@ namespace kerbal_impact
             Log("Crashed on "+crashBody.theName);
             //find all craft orbiting and landed at this body
             foreach (Vessel vessel in FlightGlobals.Vessels.Where(v=>v.orbit.referenceBody==crashBody)) {
-                Log("Found a vessel around");
+                Log("Found a vessel "+vessel.GetName());
                 if (asteroid==null) {
                     if (vessel.situation==Vessel.Situations.LANDED) {
                         landedVessel(crashBody, vessel, crashVessel);
@@ -190,7 +190,7 @@ namespace kerbal_impact
                     List<Spectrometer> spectrometers = observer.FindPartModulesImplementing<Spectrometer>();
                     if (spectrometers.Count != 0)
                     {
-                        Log("Found spectrometers");
+                        Log("Found loaded spectrometers");
 						ImpactScienceData data = createAsteroidSpectralData(crashBody, asteroid, crashVessel, spectrometers[0].part.flightID);
                         ImpactCoordinator.getInstance().bangListeners.Fire(data);
                         spectrometers[0].addExperiment(data);
@@ -206,7 +206,7 @@ namespace kerbal_impact
                         {
                             if (mod.moduleName == "Spectrometer")
                             {
-                                Log("Found spectrometers");
+                                Log("Found unloaded spectrometers");
 								ImpactScienceData data = createAsteroidSpectralData(crashBody, asteroid, crashVessel, snap.flightID);
                                 ImpactCoordinator.getInstance().bangListeners.Fire(data);
                                 Spectrometer.NewResult(mod.moduleValues, data);

@@ -79,8 +79,9 @@ namespace kerbal_impact
         internal void addExperiment(ImpactScienceData newData)
         {
             //only replace if it is better than any existing results
-            if (result!=null && newData.dataAmount > result.dataAmount)
+            if (result==null || newData.dataAmount > result.dataAmount)
             {
+                ImpactMonitor.Log("Trying to save impact");
                 result = newData;
             }
         }
