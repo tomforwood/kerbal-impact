@@ -1,4 +1,5 @@
 ﻿using KSP.IO;
+using KSP.Localization;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -115,7 +116,7 @@ namespace kerbal_impact
         private void doImpact(Vessel crashVessel, Vessel asteroid) {
             CelestialBody crashBody = crashVessel.orbit.referenceBody;
             if (crashBody.atmosphere && asteroid==null) return;
-            Log("Crashed on "+crashBody.theName);
+            Log("Crashed on "+crashBody.name);
             //find all craft orbiting and landed at this body
             foreach (Vessel vessel in FlightGlobals.Vessels.Where(v=>v.orbit.referenceBody==crashBody)) {
                 Log("Found a vessel "+vessel.GetName());
@@ -282,10 +283,10 @@ namespace kerbal_impact
 
 
             ScienceExperiment experiment = ResearchAndDevelopment.GetExperiment("ImpactSeismometer");
-            ScienceSubject subject = ResearchAndDevelopment.GetExperimentSubject(experiment, ExperimentSituations.SrfLanded, crashBody, "");
+            ScienceSubject subject = ResearchAndDevelopment.GetExperimentSubject(experiment, ExperimentSituations.SrfLanded, crashBody, "", "");
             double science = translateKEToScience(crashEnergy, crashBody, subject);
 
-            String flavourText = "Impact of {0} on {1}";
+            String flavourText = "Impact of <<1>> on <<2>>";
             Log(" caluculated science =" + science);
             science = Math.Max(0.01, science - subject.science);
             Log("residual science =" + science);
@@ -295,11 +296,11 @@ namespace kerbal_impact
 
             ImpactScienceData data = new ImpactScienceData(ImpactScienceData.DataTypes.Seismic, 
                 (float)crashEnergy, null, crashVessel.latitude,
-                (float)(science * subject.dataScale), 1f, 0, subject.id, 
-				String.Format(flavourText, energyFormat(crashEnergy), crashBody.theName), false, flightID);
+                (float)(science * subject.dataScale), 1f, 0, subject.id,
+                Localizer.Format(flavourText, energyFormat(crashEnergy), crashBody.GetDisplayName()), false, flightID);
 
             ScreenMessages.PostScreenMessage(
-                String.Format("Recorded seismic impact of {0} on {1}",energyFormat(crashEnergy), crashBody.theName),
+                Localizer.Format("Recorded seismic impact of <<1>> on <<2>>", energyFormat(crashEnergy), crashBody.GetDisplayName()),
                 5.0f, ScreenMessageStyle.UPPER_RIGHT);
 
 
@@ -321,10 +322,10 @@ namespace kerbal_impact
             {
                 Log("att=" + att.name+"-"+att.value);
             }
-            ScienceSubject subject = ResearchAndDevelopment.GetExperimentSubject(experiment, ExperimentSituations.InSpaceLow, crashBody, biome);
+            ScienceSubject subject = ResearchAndDevelopment.GetExperimentSubject(experiment, ExperimentSituations.InSpaceLow, crashBody, biome, biome);
             double science = subject.scienceCap;
             Log("Impact took place in " + biome + " at " + crashVessel.latitude + "," + crashVessel.longitude);
-            String flavourText = "Impact at {0} on {1}";
+            String flavourText = "Impact at <<1>> on <<2>>";
 
             science = Math.Max(0, science - subject.science);
             science /= subject.subjectValue;
@@ -332,10 +333,10 @@ namespace kerbal_impact
             ImpactScienceData data = new ImpactScienceData(ImpactScienceData.DataTypes.Spectral,
                 0, biome, crashVessel.latitude,
                 (float)(science * subject.dataScale), 1f, 0, subject.id, 
-				String.Format(flavourText, biome, crashBody.theName), false, flightID);
+				Localizer.Format(flavourText, biome, crashBody.GetDisplayName()), false, flightID);
 
             ScreenMessages.PostScreenMessage(
-                String.Format("Recorded spectrographic impact data at {0} on {1}", biome, crashBody.theName),
+                Localizer.Format("Recorded spectrographic impact data at <<1>> on <<2>>", biome, crashBody.GetDisplayName()),
                 5.0f, ScreenMessageStyle.UPPER_RIGHT);
 
             return data;
@@ -351,20 +352,20 @@ namespace kerbal_impact
             ScienceExperiment experiment = ResearchAndDevelopment.GetExperiment("AsteroidSpectometry");
             ExperimentSituations situation = ScienceUtil.GetExperimentSituation(asteroid);
 
-            ScienceSubject subject = ResearchAndDevelopment.GetExperimentSubject(experiment, situation, asteroid.id.ToString(), asteroid.GetName(), crashBody, "");
+            ScienceSubject subject = ResearchAndDevelopment.GetExperimentSubject(experiment, situation, asteroid.id.ToString(), asteroid.GetName(), crashBody, "", "");
             double science = subject.scienceCap;
             Log("Impact took place in " + situation);
-            String flavourText = "Impact at {0} on {1}";
+            String flavourText = "Impact at <<1>> on <<2>>";
 
   
             science /= subject.subjectValue;
 
             ImpactScienceData data = new ImpactScienceData(0, asteroid.GetName(), 
                 (float)(science * subject.dataScale), 1f, 0, subject.id,
-				String.Format(flavourText, asteroid.GetName(), crashBody.theName), false, flightID);
+                Localizer.Format(flavourText, asteroid.GetName(), crashBody.GetDisplayName()), false, flightID);
 
             ScreenMessages.PostScreenMessage(
-                String.Format("Recorded spectrographic impact data at {0} around {1}", asteroid.GetName(), crashBody.theName),
+                Localizer.Format("Recorded spectrographic impact data at <<1>> around <<2>>", asteroid.GetName(), crashBody.GetDisplayName()),
                 5.0f, ScreenMessageStyle.UPPER_RIGHT);
 
             return data;
