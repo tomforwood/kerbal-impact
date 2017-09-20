@@ -49,7 +49,7 @@ namespace kerbal_impact
                 ConfigNode storedDataNode = node.GetNode("ScienceData");
                 ImpactMonitor.Log("loading data");
                 ImpactScienceData data = new ImpactScienceData(storedDataNode);
-                if (newData.dataAmount < data.dataAmount)
+				if (newData.dataAmount < data.dataAmount || newData.kineticEnergy < data.kineticEnergy)
                 {
                     return;
                 }
@@ -68,7 +68,7 @@ namespace kerbal_impact
 			if (data != null) {
 				if (result == null) {
 					result = data as ImpactScienceData;
-				} else if(data.dataAmount > result.dataAmount) {
+				} else if(data.dataAmount > result.dataAmount && (data as ImpactScienceData).kineticEnergy > result.kineticEnergy) {
 					result = data as ImpactScienceData;
 				}
 			}
@@ -79,7 +79,7 @@ namespace kerbal_impact
         internal void addExperiment(ImpactScienceData newData)
         {
             //only replace if it is better than any existing results
-            if (result==null || newData.dataAmount > result.dataAmount)
+            if (result==null || (newData.dataAmount > result.dataAmount && newData.kineticEnergy > result.kineticEnergy))
             {
                 result = newData;
             }
