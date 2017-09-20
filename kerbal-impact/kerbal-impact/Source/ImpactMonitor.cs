@@ -100,7 +100,7 @@ namespace kerbal_impact
             if (crashPart.vessel.srf_velocity.magnitude <50) return;
             Vessel asteroid=null;
             foreach (Vessel v in FlightGlobals.Vessels) {
-                Log(v.vesselName+v.vesselType + v.RevealName());
+                Log(v.vesselName + " " +v.vesselType + " " + v.RevealName());
                 if (v.vesselName == report.other && v.vesselType == VesselType.SpaceObject)
                 {
                     asteroid = v;
