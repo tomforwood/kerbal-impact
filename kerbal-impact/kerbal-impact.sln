@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Express 2013 for Windows Desktop
-VisualStudioVersion = 12.0.30723.0
+VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "kerbal-impact", "kerbal-impact\kerbal-impact.csproj", "{C9B77AEA-B8CB-4F57-B4D9-4FAE5CD085F2}"
 EndProject
@@ -11,8 +11,8 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{C9B77AEA-B8CB-4F57-B4D9-4FAE5CD085F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C9B77AEA-B8CB-4F57-B4D9-4FAE5CD085F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9B77AEA-B8CB-4F57-B4D9-4FAE5CD085F2}.Debug|Any CPU.ActiveCfg = Release|Any CPU
+		{C9B77AEA-B8CB-4F57-B4D9-4FAE5CD085F2}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{C9B77AEA-B8CB-4F57-B4D9-4FAE5CD085F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C9B77AEA-B8CB-4F57-B4D9-4FAE5CD085F2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection

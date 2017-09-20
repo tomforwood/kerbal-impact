@@ -79,7 +79,7 @@ namespace kerbal_impact
         internal void addExperiment(ImpactScienceData newData)
         {
             //only replace if it is better than any existing results
-			if (result!=null && newData.dataAmount > result.dataAmount && newData.kineticEnergy > result.kineticEnergy)
+            if (result==null || (newData.dataAmount > result.dataAmount && newData.kineticEnergy > result.kineticEnergy))
             {
                 result = newData;
             }

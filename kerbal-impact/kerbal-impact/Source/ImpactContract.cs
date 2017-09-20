@@ -6,6 +6,7 @@ using UnityEngine;
 using Contracts;
 using KSP;
 using KSPAchievements;
+using KSP.Localization;
 
 namespace kerbal_impact
 {
@@ -28,7 +29,9 @@ namespace kerbal_impact
             return false;
         }
 
-        protected bool actuallyGenerate(){
+        protected bool actuallyGenerate()
+        {
+            ImpactMonitor.Log("Trying to generate an impact contract");
             IEnumerable<CelestialBody> bodies = Contract.GetBodies_Reached(false, false);
             
             bodies = bodies.Where(body => !body.atmosphere);
@@ -127,16 +130,17 @@ namespace kerbal_impact
                 expectedDataType = ImpactScienceData.DataTypes.Spectral;
             }
 
-            public PossibleContract(double prob, string asteroid)
+            public PossibleContract(double prob, string asteroid, CelestialBody orbiting)
             {
                 probability = prob;
                 this.asteroid = asteroid;
+                this.body = orbiting;
                 expectedDataType = ImpactScienceData.DataTypes.Asteroid;
             }
 
             public override String ToString()
             {
-                if (body != null) { return body.theName + "-" + ImpactMonitor.energyFormat(energy) + "-" + biome + "-" + latitude; }
+                if (body != null) { return body.name + "-" + ImpactMonitor.energyFormat(energy) + "-" + biome + "-" + latitude; }
                 else return asteroid;
                 
             }
@@ -162,6 +166,12 @@ namespace kerbal_impact
                 if (node.HasValue("Asteroid"))
                 {
                     asteroid = node.GetValue("Asteroid");
+                    if (body==null)
+                    {
+                        //legacy contract without asteroid body specified
+                        Vessel ast = FlightGlobals.Vessels.Where(v => v.GetName() == asteroid).Single();
+                        body = ast.orbit.referenceBody;
+                    }
                 }
                 if (node.HasValue(ImpactScienceData.DataTypeName))
                 {
@@ -176,7 +186,6 @@ namespace kerbal_impact
                     else if (asteroid != null) expectedDataType = ImpactScienceData.DataTypes.Asteroid;
                     else expectedDataType = ImpactScienceData.DataTypes.Seismic;
                 }
-                ImpactMonitor.Log("Loaded datatype is " + expectedDataType);
             }
 
             public void save(ConfigNode node)
@@ -225,9 +234,9 @@ namespace kerbal_impact
 
     class SeismicContract :  ImpactContract
     {
-        private const String titleBlurb = "Record an impact with a seismometer of {0} on {1}";
-        private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be usefull.\n Crash a probe into {0} with at least {1}" +
-            " of kinetic energy and record the results with a sesimometer landed on {0}";
+        private const String titleBlurb = "Record an impact with a seismometer of <<1>> on <<2>>";
+        private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be usefull.\n Crash a probe into <<1>> with at least <<2>>" +
+            " of kinetic energy and record the results with a sesimometer landed on <<1>>";
 
         protected override bool Generate()
         {
@@ -252,7 +261,7 @@ namespace kerbal_impact
 
                 ScienceSubject subject;
                 ExperimentSituations sit = ExperimentSituations.SrfLanded;
-                subject = ResearchAndDevelopment.GetExperimentSubject(experiment, sit, body, "surface");
+                subject = ResearchAndDevelopment.GetExperimentSubject(experiment, sit, body, "surface", "");
                 int stars = starRatings[prestige];
                 double energy = pickKE(stars, subject, body);
                 possible.Add(new PossibleContract(++probSum, body, energy));
@@ -271,12 +280,12 @@ namespace kerbal_impact
 
         protected override string GetTitle()
         {
-            return String.Format(titleBlurb, ImpactMonitor.energyFormat(pickedContract.energy), pickedContract.body.theName);
+            return Localizer.Format(titleBlurb, ImpactMonitor.energyFormat(pickedContract.energy), pickedContract.body.GetDisplayName());
         }
 
         protected override string GetDescription()
         {
-            return String.Format(descriptionBlurb, pickedContract.body.theName, ImpactMonitor.energyFormat(pickedContract.energy));
+            return Localizer.Format(descriptionBlurb, pickedContract.body.GetDisplayName(), ImpactMonitor.energyFormat(pickedContract.energy));
         }
 
         protected override string GetSynopsys()
@@ -309,13 +318,13 @@ namespace kerbal_impact
         private static String configFile = KSPUtil.ApplicationRootPath + "GameData/Impact/biomedifficulty.cfg";
         private static bool useBiomes;
 
-        private const String titleBlurb = "Record an impact with a Spectrometer in {0} on {1}";
-        private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be useful.\n Crash a probe into {0} on {1}" +
+        private const String titleBlurb = "Record an impact with a Spectrometer in <<1>> on <2>>";
+        private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be useful.\n Crash a probe into <<1>> on <<2>>" +
             " and observe the results with a spectrometer in orbit";
 
-        private const String titleLatBlurb = "Record an impact with a Spectrometer into {0} above {1}°(N/S)";
-        private const String descriptionLatBlurb = "We all like big bangs - and the scientists tell us they can be useful.\n Crash a probe into {0} above" +
-            "{1}° Latitude North or South and observe the results with a spectrometer in orbit";
+        private const String titleLatBlurb = "Record an impact with a Spectrometer into <<1>> above <<2>>°(N/S)";
+        private const String descriptionLatBlurb = "We all like big bangs - and the scientists tell us they can be useful.\n Crash a probe into <<1>> above" +
+            "<<2>>° Latitude North or South and observe the results with a spectrometer in orbit";
 
         protected override bool Generate()
         {
@@ -414,20 +423,20 @@ namespace kerbal_impact
         {
             if (useBiomes)
             {
-                return String.Format(titleBlurb, pickedContract.biome, pickedContract.body.theName);
+                return Localizer.Format(titleBlurb, pickedContract.biome, pickedContract.body.GetDisplayName());
             }
             else
             {
-                return String.Format(titleLatBlurb, pickedContract.body.theName, pickedContract.latitude);
+                return Localizer.Format(titleLatBlurb, pickedContract.body.GetDisplayName(), pickedContract.latitude);
             }
         }
 
         protected override string GetDescription()
         {
             if (useBiomes)
-                return String.Format(descriptionBlurb, pickedContract.biome, pickedContract.body.theName);
+                return Localizer.Format(descriptionBlurb, pickedContract.biome, pickedContract.body.GetDisplayName());
             else
-                return String.Format(descriptionLatBlurb, pickedContract.body.theName, pickedContract.latitude);
+                return Localizer.Format(descriptionLatBlurb, pickedContract.body.GetDisplayName(), pickedContract.latitude);
         }
 
         protected override string GetSynopsys()
@@ -454,16 +463,16 @@ namespace kerbal_impact
 
     class AsteroidSpectrumContract : ImpactContract
     {
-        private const String titleBlurb = "Record an impact with a Spectrometer with asteroid {0}";
-        private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be usefull.\n Crash a probe into asteroid {0}" +
-            " and observe the results with a spectrometer in orbit.\nThe spectometer must be within 500km of the impact";
+        private const String titleBlurb = "Record an impact with a Spectrometer with asteroid <<1>>";
+        private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be usefull.\n Crash a probe into asteroid <<1>>" +
+            " orbiting <<2>> and observe the results with a spectrometer in orbit.\nThe spectometer must be within 500km of the impact";
 
         protected override bool Generate()
         {
-            GameEvents.onVesselDestroy.Add(OnVesselDestroy);
             bool result = actuallyGenerate();
             if (result)
             {
+                GameEvents.onVesselDestroy.Add(OnVesselDestroy);
                 //make the name of the targeted asteroid visible
                 IEnumerable<Vessel> asteroids =
                 FlightGlobals.Vessels.Where(v => v.GetName() == pickedContract.asteroid);
@@ -477,6 +486,7 @@ namespace kerbal_impact
         {
             List<PossibleContract> possible = new List<PossibleContract>();
             double probSum = 0;
+            ImpactMonitor.Log("Finding asteroids");
             IEnumerable<Vessel> asteroids= FlightGlobals.Vessels.Where(v => v.vesselType == VesselType.SpaceObject);
             foreach (Vessel asteroid in asteroids)
             {
@@ -493,7 +503,7 @@ namespace kerbal_impact
                 int stars = getAsteroidStars(asteroid);
                 if (stars == starRatings[prestige])
                 {
-                    possible.Add(new PossibleContract(probSum++, asteroid.GetName()));
+                    possible.Add(new PossibleContract(probSum++, asteroid.GetName(), asteroid.orbit.referenceBody));
                 }
 
             }
@@ -522,12 +532,12 @@ namespace kerbal_impact
 
         protected override string GetTitle()
         {
-           return String.Format(titleBlurb, pickedContract.asteroid);
+            return Localizer.Format(titleBlurb, pickedContract.asteroid);
         }
 
         protected override string GetDescription()
         {
-            return String.Format(descriptionBlurb, pickedContract.asteroid);
+            return Localizer.Format(descriptionBlurb, pickedContract.asteroid, pickedContract.body.GetDisplayName());
         }
 
         protected override string GetSynopsys()
@@ -554,7 +564,7 @@ namespace kerbal_impact
         private void OnVesselDestroy(Vessel vessel)
         {
             ImpactMonitor.Log("In astContract onVesselDestroy");
-            if (vessel.vesselType == VesselType.SpaceObject)
+            if (vessel.vesselType == VesselType.SpaceObject && pickedContract!=null)
             {
                 ImpactMonitor.Log("vessel of type asteroid has been destroyed - checking for active contracts");
                 ImpactMonitor.Log("PC="+pickedContract);
@@ -590,13 +600,13 @@ namespace kerbal_impact
 
     class ImpactParameter : ContractParameter
     {
-        private const string keTitle = "Crash into {0} with {1}";
-        private const string biomeTitle = "Crash into {0} on {1}";
-        private const string latitudeTitle = "Crash into {0} above {1}° (N/S)";
-        private const String asteroidTitle = "Crash into {0}";
+        private const string keTitle = "Crash into <<1>> with <<2>>";
+        private const string biomeTitle = "Crash into <<1>> on <<2>>";
+        private const string latitudeTitle = "Crash into <<1>> above <<2>>° (N/S)";
+        private const string asteroidTitle = "Crash into <<1>>";
 
         ImpactContract.PossibleContract contract;
-        private Boolean isComplete = false;
+        private bool isComplete = false;
 
         public ImpactParameter()
         {
@@ -684,20 +694,20 @@ namespace kerbal_impact
         {
             if (contract.asteroid != null)
             {
-                return String.Format(asteroidTitle, contract.asteroid);
+                return Localizer.Format(asteroidTitle, contract.asteroid);
             }
             if (contract.biome == null) {
                 if (contract.energy > 0)
                 {
-                    return String.Format(keTitle, contract.body.theName, ImpactMonitor.energyFormat(contract.energy));
+                    return Localizer.Format(keTitle, contract.body.GetDisplayName(), ImpactMonitor.energyFormat(contract.energy));
                 }
                 else
                 {
-                    return String.Format(latitudeTitle, contract.body.theName, contract.latitude);
+                    return Localizer.Format(latitudeTitle, contract.body.GetDisplayName(), contract.latitude);
                 }
             } 
             else
-                return String.Format(biomeTitle, contract.biome, contract.body.theName);
+                return Localizer.Format(biomeTitle, contract.biome, contract.body.GetDisplayName());
         }
     }
 
