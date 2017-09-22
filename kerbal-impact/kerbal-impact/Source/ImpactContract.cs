@@ -47,7 +47,6 @@ namespace kerbal_impact
             pickedContract = contracts[contractIndex];
             ImpactMonitor.Log("picked one "+pickedContract);
 
-            //TODO all of these
             SetExpiry();
             SetScience(1.5f, pickedContract.body);
             SetDeadlineYears(0.5f, pickedContract.body);
@@ -234,9 +233,6 @@ namespace kerbal_impact
 
     class SeismicContract :  ImpactContract
     {
-        private const String titleBlurb = "Record an impact with a seismometer of <<1>> on <<2>>";
-        private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be usefull.\n Crash a probe into <<1>> with at least <<2>>" +
-            " of kinetic energy and record the results with a sesimometer landed on <<1>>";
 
         protected override bool Generate()
         {
@@ -280,12 +276,13 @@ namespace kerbal_impact
 
         protected override string GetTitle()
         {
-            return Localizer.Format(titleBlurb, ImpactMonitor.energyFormat(pickedContract.energy), pickedContract.body.GetDisplayName());
+            return Localizer.Format("#autoLOC_SeismicContract_Title", 
+                ImpactMonitor.energyFormat(pickedContract.energy), pickedContract.body.GetDisplayName());
         }
 
         protected override string GetDescription()
         {
-            return Localizer.Format(descriptionBlurb, pickedContract.body.GetDisplayName(), ImpactMonitor.energyFormat(pickedContract.energy));
+            return Localizer.Format("#autoLOC_SeismicContract_Blurb", pickedContract.body.GetDisplayName(), ImpactMonitor.energyFormat(pickedContract.energy));
         }
 
         protected override string GetSynopsys()
@@ -295,7 +292,7 @@ namespace kerbal_impact
 
         protected override string MessageCompleted()
         {
-            return "Science data received";
+            return "#autoLOC_SeismicContract_Completed";
         }
 
         public override bool MeetRequirements()
@@ -318,13 +315,11 @@ namespace kerbal_impact
         private static String configFile = KSPUtil.ApplicationRootPath + "GameData/Impact/biomedifficulty.cfg";
         private static bool useBiomes;
 
-        private const String titleBlurb = "Record an impact with a Spectrometer in <<1>> on <2>>";
-        private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be useful.\n Crash a probe into <<1>> on <<2>>" +
-            " and observe the results with a spectrometer in orbit";
+        private const String titleBlurb = "#autoLOC_SpectrumContractBiome_Title";
+        private const String descriptionBlurb = "#autoLOC_SpectrumContractBiome_Blurb";
 
-        private const String titleLatBlurb = "Record an impact with a Spectrometer into <<1>> above <<2>>°(N/S)";
-        private const String descriptionLatBlurb = "We all like big bangs - and the scientists tell us they can be useful.\n Crash a probe into <<1>> above" +
-            "<<2>>° Latitude North or South and observe the results with a spectrometer in orbit";
+        private const String titleLatBlurb = "#autoLOC_SpectrumContractLat_Blurb";
+        private const String descriptionLatBlurb = "#autoLOC_SpectrumContractLat_Blurb";
 
         protected override bool Generate()
         {
@@ -382,13 +377,13 @@ namespace kerbal_impact
                 if (contracts.Count() > 0) continue;//only 1 contract a given prestige offered at a time
 
 
-                //ImpactMonitor.Log("posible body="+body.theName);
-                if (!biomeDifficulties.ContainsKey(body)) continue;
+                //ImpactMonitor.Log("posible body="+body.theName);                
                 Dictionary<string, int> biomes = biomeDifficulties[body];
                 int stars = starRatings[prestige];
                 //ImpactMonitor.Log("Looking for contracs with stars" + stars);
                 if (useBiomes)
                 {
+                    if (!biomeDifficulties.ContainsKey(body)) continue;
                     IEnumerable<KeyValuePair<String, int>> b = biomes.Where(bd => (int)(bd.Value / 3.4) == stars - 1);
                     foreach (KeyValuePair<String, int> biomeVal in b)
                     {
@@ -446,7 +441,7 @@ namespace kerbal_impact
 
         protected override string MessageCompleted()
         {
-            return "Science data received";
+            return "#autoLOC_SpectrumContract_Completed";
         }
 
         public override bool MeetRequirements()
@@ -463,9 +458,8 @@ namespace kerbal_impact
 
     class AsteroidSpectrumContract : ImpactContract
     {
-        private const String titleBlurb = "Record an impact with a Spectrometer with asteroid <<1>>";
-        private const String descriptionBlurb = "We all like big bangs - and the scientists tell us they can be usefull.\n Crash a probe into asteroid <<1>>" +
-            " orbiting <<2>> and observe the results with a spectrometer in orbit.\nThe spectometer must be within 500km of the impact";
+        private const String titleBlurb = "#autoLOC_AsteroidContract_Blurb";
+        private const String descriptionBlurb = "#autoLOC_AsteroidContract_Blurb";
 
         protected override bool Generate()
         {
@@ -525,7 +519,7 @@ namespace kerbal_impact
 
         private int orbitFactor(CelestialBody celestialBody)
         {
-            if (celestialBody.GetName() == "Kerbin") return -1;
+            if (celestialBody.isHomeWorld) return -1;
             if (celestialBody.GetName() == "Sun") return 0;
             return orbitFactor(celestialBody.GetOrbit().referenceBody) + 1;
         }
@@ -547,7 +541,7 @@ namespace kerbal_impact
 
         protected override string MessageCompleted()
         {
-            return "Science data received";
+            return "#autoLOC_AsteroidContract_Completed";
         }
 
         public override bool MeetRequirements()
@@ -600,10 +594,10 @@ namespace kerbal_impact
 
     class ImpactParameter : ContractParameter
     {
-        private const string keTitle = "Crash into <<1>> with <<2>>";
-        private const string biomeTitle = "Crash into <<1>> on <<2>>";
-        private const string latitudeTitle = "Crash into <<1>> above <<2>>° (N/S)";
-        private const string asteroidTitle = "Crash into <<1>>";
+        private const string keTitle = "#autoLOC_ImpactParam_KeTitle";
+        private const string biomeTitle = "#autoLOC_ImpactParam_BiomeTitle";
+        private const string latitudeTitle = "#autoLOC_ImpactParam_LatTitle";
+        private const string asteroidTitle = "#autoLOC_ImpactParam_AstTitle";
 
         ImpactContract.PossibleContract contract;
         private bool isComplete = false;
@@ -713,7 +707,7 @@ namespace kerbal_impact
 
     class ScienceReceiptParameter : ContractParameter
     {
-        private const string keTitle = "Recover science data";
+        private const string keTitle = "#autoLOC_SciParam_KeTitle";
 
         private Boolean isComplete = false;
 
@@ -804,7 +798,7 @@ namespace kerbal_impact
 
         protected override string GetTitle()
         {
-            return keTitle;
+            return Localizer.Format(keTitle);
         }
     }
 }
