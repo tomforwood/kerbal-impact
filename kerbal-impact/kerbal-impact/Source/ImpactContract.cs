@@ -441,7 +441,7 @@ namespace kerbal_impact
 
         protected override string MessageCompleted()
         {
-            return "#autoLOC_SpectrumContract_Completed";
+            return Localizer.Format("#autoLOC_SpectrumContract_Completed");
         }
 
         public override bool MeetRequirements()
@@ -541,7 +541,7 @@ namespace kerbal_impact
 
         protected override string MessageCompleted()
         {
-            return "#autoLOC_AsteroidContract_Completed";
+            return Localizer.Format("#autoLOC_AsteroidContract_Completed");
         }
 
         public override bool MeetRequirements()

@@ -318,10 +318,6 @@ namespace kerbal_impact
             String biome = ScienceUtil.GetExperimentBiome(crashBody, crashVessel.latitude, crashVessel.longitude);
             CBAttributeMapSO m = crashBody.BiomeMap;
             CBAttributeMapSO.MapAttribute[] atts = m.Attributes;
-            foreach (CBAttributeMapSO.MapAttribute att in atts)
-            {
-                Log("att=" + att.name+"-"+att.value);
-            }
             ScienceSubject subject = ResearchAndDevelopment.GetExperimentSubject(experiment, ExperimentSituations.InSpaceLow, crashBody, biome, biome);
             double science = subject.scienceCap;
             Log("Impact took place in " + biome + " at " + crashVessel.latitude + "," + crashVessel.longitude);
