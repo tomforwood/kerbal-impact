@@ -31,7 +31,7 @@ namespace kerbal_impact
 
         protected bool actuallyGenerate()
         {
-            ImpactMonitor.Log("Trying to generate an impact contract");
+            //ImpactMonitor.Log("Trying to generate an impact contract");
             IEnumerable<CelestialBody> bodies = Contract.GetBodies_Reached(false, false);
             
             bodies = bodies.Where(body => !body.atmosphere);
@@ -45,7 +45,7 @@ namespace kerbal_impact
             if (contractIndex < 0) contractIndex = ~contractIndex;
             //ImpactMonitor.Log("pickedindex=" + contractIndex);
             pickedContract = contracts[contractIndex];
-            ImpactMonitor.Log("picked one "+pickedContract);
+           // ImpactMonitor.Log("picked one "+pickedContract);
 
             SetExpiry();
             SetScience(1.5f, pickedContract.body);
@@ -54,7 +54,7 @@ namespace kerbal_impact
             SetFunds(20000,80000,10000,pickedContract.body);
 
             generateParameters();
-            ImpactMonitor.Log("Generated parameters");
+            //ImpactMonitor.Log("Generated parameters");
             
             return true;
         }
