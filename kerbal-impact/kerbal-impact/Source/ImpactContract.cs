@@ -15,8 +15,13 @@ namespace kerbal_impact
     {
         const String valuesNode = "ContractValues";
         
+        // Linuxgurugamer reformatted for readability
         protected static Dictionary<ContractPrestige, int> starRatings = new Dictionary<ContractPrestige, int> 
-        { {ContractPrestige.Trivial,1 },{ContractPrestige.Significant, 2},{ContractPrestige.Exceptional, 3}};
+        {
+            { ContractPrestige.Trivial, 1 },
+            { ContractPrestige.Significant, 2},
+            { ContractPrestige.Exceptional, 3}
+        };
 
         protected PossibleContract pickedContract;
         protected readonly System.Random random = new System.Random();
@@ -377,13 +382,16 @@ namespace kerbal_impact
                 if (contracts.Count() > 0) continue;//only 1 contract a given prestige offered at a time
 
 
-                //ImpactMonitor.Log("posible body="+body.theName);                
+                //ImpactMonitor.Log("posible body="+body.theName); 
+                // Moved check for body to prevent missing key exception in next line
+                if (!biomeDifficulties.ContainsKey(body)) continue;
                 Dictionary<string, int> biomes = biomeDifficulties[body];
+
                 int stars = starRatings[prestige];
                 //ImpactMonitor.Log("Looking for contracs with stars" + stars);
                 if (useBiomes)
                 {
-                    if (!biomeDifficulties.ContainsKey(body)) continue;
+                    
                     IEnumerable<KeyValuePair<String, int>> b = biomes.Where(bd => (int)(bd.Value / 3.4) == stars - 1);
                     foreach (KeyValuePair<String, int> biomeVal in b)
                     {
