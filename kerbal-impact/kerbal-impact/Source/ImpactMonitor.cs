@@ -119,19 +119,19 @@ namespace kerbal_impact
             Log("Crashed on "+crashBody.name);
             //find all craft orbiting and landed at this body
             foreach (Vessel vessel in FlightGlobals.Vessels.Where(v=>v.orbit.referenceBody==crashBody)) {
-                Log("Found a vessel "+vessel.GetName());
+                Log("Found a vessel "+vessel.GetName() + " in situation "+ vessel.situation);
                 if (asteroid==null) {
                     if (vessel.situation==Vessel.Situations.LANDED) {
                         landedVessel(crashBody, vessel, crashVessel);
                     }
-                    if (vessel.situation == Vessel.Situations.ORBITING)
-                    {
+                    if (vessel.situation == Vessel.Situations.ORBITING || vessel.situation == Vessel.Situations.FLYING)
+                    { //KSP seems to be identifying some orbiting vessels as flying
                         orbitingVessel(crashBody, vessel, crashVessel);
                     }
                 }
                 else
                 {
-                    if (vessel.situation == Vessel.Situations.ORBITING)
+                    if (vessel.situation == Vessel.Situations.ORBITING || vessel.situation == Vessel.Situations.FLYING)
                     {
                         nearAsteroidVessel(vessel, crashVessel, asteroid, crashBody);
                     }

@@ -31,8 +31,6 @@ namespace kerbal_impact
 
         public static void OnSave(ConfigNode node, ImpactScienceData data)
         {
-            ImpactMonitor.Log("Saving spectrometerr");
-
             node.RemoveNodes("ScienceData"); //** Prevent duplicates            
             if (data != null)
             {

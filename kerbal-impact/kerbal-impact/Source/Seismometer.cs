@@ -30,13 +30,10 @@ namespace kerbal_impact
 
         public static void OnSave(ConfigNode node, ImpactScienceData data)
         {
-            ImpactMonitor.Log("Saving seismometer");
-
             node.RemoveNodes("ScienceData"); //** Prevent duplicates            
             if (data != null)
             {
                 ConfigNode storedDataNode = node.AddNode("ScienceData");
-                ImpactMonitor.Log("saving data");
                 data.SaveImpact(storedDataNode);
             }
         }

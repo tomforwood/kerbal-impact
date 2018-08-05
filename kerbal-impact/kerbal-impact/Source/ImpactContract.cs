@@ -384,14 +384,14 @@ namespace kerbal_impact
 
                 //ImpactMonitor.Log("posible body="+body.theName); 
                 // Moved check for body to prevent missing key exception in next line
-                if (!biomeDifficulties.ContainsKey(body)) continue;
-                Dictionary<string, int> biomes = biomeDifficulties[body];
 
                 int stars = starRatings[prestige];
                 //ImpactMonitor.Log("Looking for contracs with stars" + stars);
                 if (useBiomes)
                 {
-                    
+                    if (!biomeDifficulties.ContainsKey(body)) continue;
+                    Dictionary<string, int> biomes = biomeDifficulties[body];
+
                     IEnumerable<KeyValuePair<String, int>> b = biomes.Where(bd => (int)(bd.Value / 3.4) == stars - 1);
                     foreach (KeyValuePair<String, int> biomeVal in b)
                     {
