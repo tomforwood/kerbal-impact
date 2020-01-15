@@ -11,7 +11,7 @@ using KSP.Localization;
 namespace kerbal_impact
 {
 
-    class ImpactContract : Contract
+    abstract class ImpactContract : Contract
     {
         const String valuesNode = "ContractValues";
         
@@ -50,7 +50,7 @@ namespace kerbal_impact
             if (contractIndex < 0) contractIndex = ~contractIndex;
             //ImpactMonitor.Log("pickedindex=" + contractIndex);
             pickedContract = contracts[contractIndex];
-           // ImpactMonitor.Log("picked one "+pickedContract);
+            //ImpactMonitor.Log("picked one "+pickedContract);
 
             SetExpiry();
             SetScience(1.5f, pickedContract.body);
